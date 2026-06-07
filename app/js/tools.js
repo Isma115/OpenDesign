@@ -1,0 +1,598 @@
+import { getState, setActiveTool, addElement, updateElement, removeElement, setSelection, clearSelection, getElementById } from './state.js';
+import { screenToCanvas, getElementBounds } from './geometry.js';
+import { createShapeByTool } from './shapes.js';
+import { renderDocument, renderElement, updateElementNode, clearPreview, renderPreview, applyViewport, getSvgCanvas, renderGuideLines, clearGuides, SVG_NS } from './renderer.js';
+import { handleSelectionClick, handleCanvasClick, hitTest, hitTestHandle, hitTestConnectionPoint, startSelectionBox, updateSelectionBox, endSelectionBox, refreshSelection } from './selection.js';
+import { snapElement, snapPoint } from './snapping.js';
+import { commitAction, snapshotElements } from './history.js';
+import { createConnectorElement, updateAllConnectorsForElement } from './connectors.js';
+
+let _dragData = null;
+
+export function initTools() {
+  const canvas = getSvgCanvas();
+  if (!canvas) return;
+
+  canvas.addEventListener('pointerdown', _onPointerDown);
+  canvas.addEventListener('pointermove', _onPointerMove);
+  canvas.addEventListener('pointerup', _onPointerUp);
+  canvas.addEventListener('dblclick', _onDblClick);
+  canvas.addEventListener('wheel', _onWheel, { passive: false });
+
+  document.querySelectorAll('.tool-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tool = btn.dataset.tool;
+      if (tool) {
+        setActiveTool(tool);
+        _updateToolCursor();
+      }
+    });
+  });
+}
+
+function _onPointerDown(e) {
+  const state = getState();
+  const canvas = getSvgCanvas();
+  canvas.setPointerCapture(e.pointerId);
+  const point = screenToCanvas(e.clientX, e.clientY, state.viewport);
+
+  if (state.interaction.spaceHeld || state.activeTool === 'hand') {
+    _startPan(e);
+    return;
+  }
+
+  if (state.activeTool === 'select') {
+    _handleSelectDown(e, point);
+  } else if (state.activeTool === 'connector') {
+    _handleConnectorDown(e, point);
+  } else if (_isDrawingTool(state.activeTool)) {
+    _handleDrawDown(e, point);
+  }
+}
+
+function _onPointerMove(e) {
+  const state = getState();
+  const point = screenToCanvas(e.clientX, e.clientY, state.viewport);
+
+  _updateCoords(point);
+
+  if (state.interaction.isPanning) {
+    _doPan(e);
+    return;
+  }
+
+  if (state.interaction.isDragging) {
+    _doDrag(point);
+    return;
+  }
+
+  if (state.interaction.isResizing) {
+    _doResize(point);
+    return;
+  }
+
+  if (state.interaction.isRotating) {
+    _doRotate(point);
+    return;
+  }
+
+  if (state.interaction.isDrawing) {
+    _doDraw(point);
+    return;
+  }
+
+  if (state.interaction.isConnecting) {
+    _doConnect(point);
+    return;
+  }
+
+  if (state.activeTool === 'select') {
+    const handle = hitTestHandle(point);
+    if (handle) return;
+    const hitId = hitTest(point);
+    const canvas = getSvgCanvas();
+    canvas.style.cursor = hitId ? 'move' : 'default';
+  }
+}
+
+function _onPointerUp(e) {
+  const state = getState();
+  const point = screenToCanvas(e.clientX, e.clientY, state.viewport);
+  const canvas = getSvgCanvas();
+  canvas.releasePointerCapture(e.pointerId);
+
+  if (state.interaction.isPanning) {
+    _endPan(e);
+    return;
+  }
+
+  if (state.interaction.isDragging) {
+    _endDrag(point);
+    return;
+  }
+
+  if (state.interaction.isResizing) {
+    _endResize(point);
+    return;
+  }
+
+  if (state.interaction.isRotating) {
+    _endRotate(point);
+    return;
+  }
+
+  if (state.interaction.isDrawing) {
+    _endDraw(point);
+    return;
+  }
+
+  if (state.interaction.isConnecting) {
+    _endConnect(point);
+    return;
+  }
+}
+
+function _onDblClick(e) {
+  const state = getState();
+  if (state.activeTool !== 'select') return;
+  const point = screenToCanvas(e.clientX, e.clientY, state.viewport);
+  const hitId = hitTest(point);
+  if (!hitId) return;
+  const el = getElementById(hitId);
+  if (!el || el.locked) return;
+  if (el.type === 'connector') return;
+  _startTextEdit(el);
+}
+
+function _onWheel(e) {
+  e.preventDefault();
+  const state = getState();
+  if (e.ctrlKey) {
+    const delta = e.deltaY > 0 ? -0.05 : 0.05;
+    const newZoom = Math.min(5, Math.max(0.1, state.viewport.zoom + delta));
+    state.viewport.zoom = newZoom;
+    applyViewport(state.viewport);
+    _updateZoomUI(newZoom);
+  } else {
+    const wrapper = document.getElementById('canvas-wrapper');
+    wrapper.scrollLeft += e.deltaX || e.deltaY;
+    wrapper.scrollTop += e.deltaY;
+  }
+}
+
+function _handleSelectDown(e, point) {
+  const state = getState();
+
+  const handle = hitTestHandle(point);
+  if (handle) {
+    if (handle === 'rotate') {
+      _startRotate(point);
+    } else {
+      _startResize(point, handle);
+    }
+    return;
+  }
+
+  const hitId = hitTest(point);
+  if (hitId) {
+    const el = getElementById(hitId);
+    if (el && el.locked) {
+      handleSelectionClick(hitId, e);
+      return;
+    }
+    handleSelectionClick(hitId, e);
+    _startDrag(point);
+  } else {
+    handleCanvasClick(e);
+    startSelectionBox(point);
+    state.interaction.isDrawing = true;
+    state.interaction._isSelectionBox = true;
+    state.interaction.dragStart = point;
+  }
+}
+
+function _startDrag(point) {
+  const state = getState();
+  const selected = state.selectedElementIds.map(id => getElementById(id)).filter(Boolean);
+  if (selected.length === 0) return;
+  state.interaction.isDragging = true;
+  state.interaction.dragStart = point;
+  _dragData = {
+    snapshot: snapshotElements(),
+    startPositions: selected.map(el => ({
+      id: el.id,
+      x: el.x || 0,
+      y: el.y || 0,
+      points: el.points ? el.points.map(p => ({ ...p })) : null
+    }))
+  };
+}
+
+function _doDrag(point) {
+  const state = getState();
+  if (!_dragData) return;
+  const dx = point.x - state.interaction.dragStart.x;
+  const dy = point.y - state.interaction.dragStart.y;
+
+  for (const start of _dragData.startPositions) {
+    const el = getElementById(start.id);
+    if (!el || el.locked) continue;
+    if (el.type === 'connector' && start.points) {
+      el.points = start.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
+    } else {
+      const snapped = snapElement({ ...el, x: start.x, y: start.y }, dx, dy);
+      el.x = snapped.x;
+      el.y = snapped.y;
+      renderGuideLines(snapped.guides);
+    }
+  }
+  renderDocument(state.document);
+  refreshSelection();
+}
+
+function _endDrag(point) {
+  const state = getState();
+  state.interaction.isDragging = false;
+  clearGuides();
+  if (_dragData) {
+    const after = snapshotElements();
+    commitAction({ type: 'snapshot', before: _dragData.snapshot, after });
+    for (const start of _dragData.startPositions) {
+      updateAllConnectorsForElement(start.id);
+    }
+    _dragData = null;
+  }
+  renderDocument(state.document);
+  refreshSelection();
+}
+
+function _startResize(point, handle) {
+  const state = getState();
+  const el = getElementById(state.selectedElementIds[0]);
+  if (!el) return;
+  state.interaction.isResizing = true;
+  state.interaction.resizeHandle = handle;
+  state.interaction.dragStart = point;
+  _dragData = {
+    snapshot: snapshotElements(),
+    startX: el.x,
+    startY: el.y,
+    startWidth: el.width,
+    startHeight: el.height
+  };
+}
+
+function _doResize(point) {
+  const state = getState();
+  if (!_dragData) return;
+  const el = getElementById(state.selectedElementIds[0]);
+  if (!el) return;
+  const handle = state.interaction.resizeHandle;
+  const dx = point.x - state.interaction.dragStart.x;
+  const dy = point.y - state.interaction.dragStart.y;
+  const minSize = 20;
+
+  let newX = _dragData.startX;
+  let newY = _dragData.startY;
+  let newW = _dragData.startWidth;
+  let newH = _dragData.startHeight;
+
+  if (handle.includes('e')) { newW = Math.max(minSize, _dragData.startWidth + dx); }
+  if (handle.includes('w')) { newX = _dragData.startX + dx; newW = Math.max(minSize, _dragData.startWidth - dx); }
+  if (handle.includes('s')) { newH = Math.max(minSize, _dragData.startHeight + dy); }
+  if (handle.includes('n')) { newY = _dragData.startY + dy; newH = Math.max(minSize, _dragData.startHeight - dy); }
+
+  if (_shiftHeld) {
+    const ratio = _dragData.startWidth / _dragData.startHeight;
+    if (handle === 'e' || handle === 'w') {
+      newH = newW / ratio;
+    } else if (handle === 'n' || handle === 's') {
+      newW = newH * ratio;
+    } else {
+      newH = newW / ratio;
+    }
+  }
+
+  el.x = newX;
+  el.y = newY;
+  el.width = newW;
+  el.height = newH;
+
+  renderDocument(state.document);
+  refreshSelection();
+}
+
+function _endResize(point) {
+  const state = getState();
+  state.interaction.isResizing = false;
+  if (_dragData) {
+    const after = snapshotElements();
+    commitAction({ type: 'snapshot', before: _dragData.snapshot, after });
+    if (state.selectedElementIds[0]) {
+      updateAllConnectorsForElement(state.selectedElementIds[0]);
+    }
+    _dragData = null;
+  }
+  renderDocument(state.document);
+  refreshSelection();
+}
+
+function _startRotate(point) {
+  const state = getState();
+  const el = getElementById(state.selectedElementIds[0]);
+  if (!el) return;
+  state.interaction.isRotating = true;
+  state.interaction.dragStart = point;
+  _dragData = {
+    snapshot: snapshotElements(),
+    startRotation: el.rotation || 0,
+    centerX: el.x + el.width / 2,
+    centerY: el.y + el.height / 2
+  };
+}
+
+function _doRotate(point) {
+  const state = getState();
+  if (!_dragData) return;
+  const el = getElementById(state.selectedElementIds[0]);
+  if (!el) return;
+  const angle = Math.atan2(
+    point.y - _dragData.centerY,
+    point.x - _dragData.centerX
+  ) * 180 / Math.PI + 90;
+  el.rotation = Math.round(angle) % 360;
+  if (el.rotation < 0) el.rotation += 360;
+  renderDocument(state.document);
+  refreshSelection();
+}
+
+function _endRotate(point) {
+  const state = getState();
+  state.interaction.isRotating = false;
+  if (_dragData) {
+    const after = snapshotElements();
+    commitAction({ type: 'snapshot', before: _dragData.snapshot, after });
+    _dragData = null;
+  }
+  renderDocument(state.document);
+  refreshSelection();
+}
+
+function _handleConnectorDown(e, point) {
+  const state = getState();
+  const cp = hitTestConnectionPoint(point);
+  if (cp) {
+    state.interaction.isConnecting = true;
+    state.interaction.connectSource = cp;
+    state.interaction.dragStart = point;
+  }
+}
+
+function _doConnect(point) {
+  const state = getState();
+  if (!state.interaction.connectSource) return;
+  const src = state.interaction.connectSource;
+  const previewSvg = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  previewSvg.setAttribute('x1', src.x);
+  previewSvg.setAttribute('y1', src.y);
+  previewSvg.setAttribute('x2', point.x);
+  previewSvg.setAttribute('y2', point.y);
+  previewSvg.classList.add('connector-preview');
+  renderPreview(previewSvg);
+}
+
+function _endConnect(point) {
+  const state = getState();
+  state.interaction.isConnecting = false;
+  clearPreview();
+  if (!state.interaction.connectSource) return;
+
+  const cp = hitTestConnectionPoint(point);
+  if (cp && cp.elementId !== state.interaction.connectSource.elementId) {
+    const before = snapshotElements();
+    const connector = createConnectorElement(
+      state.interaction.connectSource,
+      cp,
+      'orthogonal'
+    );
+    if (connector) {
+      addElement(connector);
+      const after = snapshotElements();
+      commitAction({ type: 'snapshot', before, after });
+      setSelection([connector.id]);
+      renderDocument(state.document);
+      refreshSelection();
+    }
+  }
+  state.interaction.connectSource = null;
+}
+
+function _handleDrawDown(e, point) {
+  const state = getState();
+  state.interaction.isDrawing = true;
+  state.interaction._isSelectionBox = false;
+  state.interaction.dragStart = point;
+  _dragData = { snapshot: snapshotElements() };
+}
+
+function _doDraw(point) {
+  const state = getState();
+  if (state.interaction._isSelectionBox) {
+    updateSelectionBox(state.interaction.dragStart, point);
+    return;
+  }
+  const start = state.interaction.dragStart;
+  const x = Math.min(start.x, point.x);
+  const y = Math.min(start.y, point.y);
+  const w = Math.abs(point.x - start.x);
+  const h = Math.abs(point.y - start.y);
+
+  if (w < 3 && h < 3) return;
+
+  const previewSvg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  previewSvg.setAttribute('x', x);
+  previewSvg.setAttribute('y', y);
+  previewSvg.setAttribute('width', w);
+  previewSvg.setAttribute('height', h);
+  previewSvg.classList.add('shape-preview');
+  renderPreview(previewSvg);
+}
+
+function _endDraw(point) {
+  const state = getState();
+  state.interaction.isDrawing = false;
+
+  if (state.interaction._isSelectionBox) {
+    endSelectionBox(state.interaction.dragStart, point);
+    state.interaction._isSelectionBox = false;
+    _dragData = null;
+    return;
+  }
+
+  clearPreview();
+  const start = state.interaction.dragStart;
+  let x = Math.min(start.x, point.x);
+  let y = Math.min(start.y, point.y);
+  let w = Math.abs(point.x - start.x);
+  let h = Math.abs(point.y - start.y);
+
+  const tool = state.activeTool;
+  if (tool === 'text' || tool === 'note') {
+    x = start.x;
+    y = start.y;
+    w = 0;
+    h = 0;
+  }
+
+  if (w < 5 && h < 5 && tool !== 'text' && tool !== 'note') {
+    w = tool === 'line' || tool === 'arrow' ? 150 : 120;
+    h = tool === 'line' || tool === 'arrow' ? 0 : 80;
+  }
+
+  const snapped = snapPoint(x, y);
+  const element = createShapeByTool(tool, snapped.x, snapped.y, w, h);
+  if (element) {
+    const before = _dragData ? _dragData.snapshot : snapshotElements();
+    addElement(element);
+    const after = snapshotElements();
+    commitAction({ type: 'snapshot', before, after });
+    setSelection([element.id]);
+    renderDocument(state.document);
+    refreshSelection();
+    setActiveTool('select');
+    _updateToolCursor();
+  }
+  _dragData = null;
+}
+
+function _startPan(e) {
+  const state = getState();
+  state.interaction.isPanning = true;
+  state.interaction.dragStart = { x: e.clientX, y: e.clientY };
+  const canvas = getSvgCanvas();
+  canvas.classList.add('panning');
+  _dragData = {
+    scrollLeft: document.getElementById('canvas-wrapper').scrollLeft,
+    scrollTop: document.getElementById('canvas-wrapper').scrollTop
+  };
+}
+
+function _doPan(e) {
+  const wrapper = document.getElementById('canvas-wrapper');
+  const dx = e.clientX - getState().interaction.dragStart.x;
+  const dy = e.clientY - getState().interaction.dragStart.y;
+  wrapper.scrollLeft = _dragData.scrollLeft - dx;
+  wrapper.scrollTop = _dragData.scrollTop - dy;
+}
+
+function _endPan(e) {
+  const state = getState();
+  state.interaction.isPanning = false;
+  const canvas = getSvgCanvas();
+  canvas.classList.remove('panning');
+  _dragData = null;
+}
+
+function _startTextEdit(el) {
+  const svg = getSvgCanvas();
+  const bounds = getElementBounds(el);
+  const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+  fo.setAttribute('x', bounds.x);
+  fo.setAttribute('y', bounds.y);
+  fo.setAttribute('width', bounds.width);
+  fo.setAttribute('height', bounds.height);
+
+  const textarea = document.createElement('textarea');
+  textarea.className = 'foreign-text-input';
+  textarea.value = el.text?.value || '';
+  textarea.style.fontSize = (el.text?.fontSize || 16) + 'px';
+  textarea.style.textAlign = el.text?.align || 'center';
+  textarea.style.color = el.text?.color || '#111827';
+  textarea.style.fontFamily = el.text?.fontFamily || 'Inter, Arial, sans-serif';
+
+  fo.appendChild(textarea);
+  const previewLayer = document.getElementById('preview-layer');
+  previewLayer.appendChild(fo);
+  textarea.focus();
+  textarea.select();
+
+  const finish = () => {
+    const before = snapshotElements();
+    const newValue = textarea.value;
+    updateElement(el.id, { text: { ...el.text, value: newValue } });
+    const after = snapshotElements();
+    commitAction({ type: 'snapshot', before, after });
+    previewLayer.removeChild(fo);
+    renderDocument(getState().document);
+    refreshSelection();
+  };
+
+  textarea.addEventListener('blur', finish);
+  textarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      textarea.removeEventListener('blur', finish);
+      previewLayer.removeChild(fo);
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      textarea.blur();
+    }
+    e.stopPropagation();
+  });
+}
+
+function _isDrawingTool(tool) {
+  return [
+    'rectangle', 'roundedRectangle', 'ellipse', 'triangle', 'diamond',
+    'pentagon', 'hexagon', 'star', 'line', 'arrow', 'text', 'note', 'frame',
+    'flow-start', 'flow-process', 'flow-decision', 'flow-io',
+    'flow-database', 'flow-document', 'flow-subprocess'
+  ].includes(tool);
+}
+
+function _updateToolCursor() {
+  const state = getState();
+  const canvas = getSvgCanvas();
+  canvas.setAttribute('class', '');
+  canvas.classList.add(`tool-${state.activeTool}`);
+}
+
+function _updateCoords(point) {
+  const coords = document.getElementById('status-coords');
+  if (coords) {
+    coords.textContent = `X: ${Math.round(point.x)}  Y: ${Math.round(point.y)}`;
+  }
+}
+
+function _updateZoomUI(zoom) {
+  const pct = Math.round(zoom * 100) + '%';
+  const zoomDisplay = document.getElementById('zoom-display');
+  const statusZoom = document.getElementById('status-zoom');
+  if (zoomDisplay) zoomDisplay.textContent = pct;
+  if (statusZoom) statusZoom.textContent = pct;
+}
+
+let _shiftHeld = false;
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Shift') _shiftHeld = true; });
+document.addEventListener('keyup', (e) => { if (e.key === 'Shift') _shiftHeld = false; });

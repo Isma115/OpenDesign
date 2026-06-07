@@ -1,0 +1,75 @@
+/* #region Layout principal | Estilo | estructura grid de la aplicacion */
+#app {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: var(--topbar-height) 1fr var(--statusbar-height);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+#workspace {
+  display: grid;
+  grid-template-columns: var(--toolbar-width) 1fr var(--right-panel-width);
+  overflow: hidden;
+  min-height: 0;
+}
+
+#canvas-wrapper {
+  position: relative;
+  overflow: auto;
+  background: var(--color-canvas-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#canvas-container {
+  position: relative;
+  flex-shrink: 0;
+}
+
+#canvas {
+  display: block;
+  background: white;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  transform-origin: 0 0;
+}
+
+#rulers {
+  display: none;
+}
+
+#ruler-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  z-index: 3;
+}
+
+#ruler-h {
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 0;
+  height: 20px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  z-index: 2;
+}
+
+#ruler-v {
+  position: absolute;
+  top: 20px;
+  left: 0;
+  bottom: 0;
+  width: 20px;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  z-index: 2;
+}
+/* #endregion */

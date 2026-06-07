@@ -1,0 +1,155 @@
+/* #region Lienzo SVG | Vista | estilos del area de dibujo y elementos */
+.grid-bg {
+  pointer-events: none;
+}
+
+.grid-hidden .grid-bg {
+  display: none;
+}
+
+#canvas.tool-select { cursor: default; }
+#canvas.tool-hand { cursor: grab; }
+#canvas.tool-hand.panning { cursor: grabbing; }
+#canvas.tool-rectangle,
+#canvas.tool-roundedRectangle,
+#canvas.tool-ellipse,
+#canvas.tool-triangle,
+#canvas.tool-diamond,
+#canvas.tool-pentagon,
+#canvas.tool-hexagon,
+#canvas.tool-star,
+#canvas.tool-frame,
+#canvas.tool-flow-start,
+#canvas.tool-flow-process,
+#canvas.tool-flow-decision,
+#canvas.tool-flow-io,
+#canvas.tool-flow-database,
+#canvas.tool-flow-document,
+#canvas.tool-flow-subprocess { cursor: crosshair; }
+#canvas.tool-text { cursor: text; }
+#canvas.tool-line,
+#canvas.tool-arrow,
+#canvas.tool-connector { cursor: crosshair; }
+#canvas.tool-note { cursor: crosshair; }
+#canvas.tool-zoom { cursor: zoom-in; }
+
+.element-shape {
+  cursor: move;
+}
+
+.element-shape.locked {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.selection-box {
+  fill: rgba(37, 99, 235, 0.08);
+  stroke: var(--color-primary);
+  stroke-width: 1;
+  stroke-dasharray: 4 2;
+  pointer-events: none;
+}
+
+.selection-handle {
+  fill: white;
+  stroke: var(--color-primary);
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+
+.selection-handle[data-handle="nw"] { cursor: nw-resize; }
+.selection-handle[data-handle="n"] { cursor: n-resize; }
+.selection-handle[data-handle="ne"] { cursor: ne-resize; }
+.selection-handle[data-handle="e"] { cursor: e-resize; }
+.selection-handle[data-handle="se"] { cursor: se-resize; }
+.selection-handle[data-handle="s"] { cursor: s-resize; }
+.selection-handle[data-handle="sw"] { cursor: sw-resize; }
+.selection-handle[data-handle="w"] { cursor: w-resize; }
+
+.selection-handle-rotate {
+  fill: white;
+  stroke: var(--color-primary);
+  stroke-width: 1.5;
+  cursor: crosshair;
+}
+
+.selection-border {
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-width: 1;
+  stroke-dasharray: 4 2;
+  pointer-events: none;
+}
+
+.selection-rotate-line {
+  stroke: var(--color-primary);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  pointer-events: none;
+}
+
+.guide-line {
+  stroke: #f43f5e;
+  stroke-width: 0.5;
+  stroke-dasharray: 4 2;
+  pointer-events: none;
+}
+
+.connector-preview {
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-width: 2;
+  stroke-dasharray: 6 3;
+  pointer-events: none;
+}
+
+.shape-preview {
+  fill: rgba(37, 99, 235, 0.1);
+  stroke: var(--color-primary);
+  stroke-width: 1;
+  stroke-dasharray: 4 2;
+  pointer-events: none;
+}
+
+.connection-point {
+  fill: white;
+  stroke: var(--color-primary);
+  stroke-width: 1.5;
+  r: 5;
+  opacity: 0;
+  transition: opacity 0.15s;
+  cursor: crosshair;
+}
+
+.connector-mode .connection-point {
+  opacity: 1;
+}
+
+.connection-point:hover {
+  fill: var(--color-primary);
+  r: 6;
+}
+
+.text-element {
+  user-select: none;
+  pointer-events: all;
+}
+
+.text-editing {
+  pointer-events: all;
+  cursor: text;
+}
+
+.foreign-text-input {
+  width: 100%;
+  height: 100%;
+  border: 2px solid var(--color-primary);
+  border-radius: 2px;
+  padding: 4px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  background: white;
+  box-sizing: border-box;
+}
+/* #endregion */

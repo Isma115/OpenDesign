@@ -1,0 +1,32 @@
+# Dependencias
+node_modules/
+
+# Archivos de prueba
+test*.js
+
+# Archivos temporales del sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archivos de configuración del editor (opcional)
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+
+# Variables de entorno
+.env
+.env.local
+
+# Archivos de build/dist (si hubiera)
+dist/
+build/
+
+# Datos de aplicación guardados localmente
+*.geoflow.json

@@ -1,0 +1,213 @@
+/* #region Barra superior | Panel | cabecera con menus y acciones rapidas */
+#topbar {
+  display: flex;
+  align-items: center;
+  height: var(--topbar-height);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 12px;
+  gap: 8px;
+  z-index: 100;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.brand-icon {
+  font-size: 18px;
+}
+
+.menu-bar {
+  display: flex;
+  gap: 2px;
+  margin-left: 12px;
+}
+
+.menu-item {
+  position: relative;
+}
+
+.menu-trigger {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--color-text);
+  transition: background 0.15s;
+}
+
+.menu-trigger:hover,
+.menu-item.open .menu-trigger {
+  background: var(--color-hover);
+}
+
+.menu-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 220px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  z-index: 200;
+}
+
+.menu-item.open .menu-dropdown {
+  display: block;
+}
+
+.menu-dropdown button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-align: left;
+  font-size: 13px;
+  transition: background 0.1s;
+}
+
+.menu-dropdown button:hover {
+  background: var(--color-hover);
+}
+
+.menu-dropdown .shortcut {
+  color: var(--color-muted);
+  font-size: 11px;
+  margin-left: 24px;
+}
+
+.topbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+#doc-name {
+  text-align: center;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  width: 240px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+#doc-name:hover {
+  border-color: var(--color-border);
+}
+
+#doc-name:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 16px;
+  color: var(--color-text);
+  transition: background 0.15s;
+}
+
+.icon-btn:hover {
+  background: var(--color-hover);
+}
+
+.separator {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+  margin: 0 4px;
+}
+
+.zoom-display {
+  font-size: 12px;
+  color: var(--color-muted);
+  min-width: 40px;
+  text-align: center;
+  user-select: none;
+}
+/* #endregion */
+
+/* #region Barra lateral izquierda | Sidebar | herramientas de dibujo */
+#left-toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  padding: 8px 0;
+  gap: 2px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 50;
+}
+
+#left-toolbar::-webkit-scrollbar {
+  width: 3px;
+}
+
+#left-toolbar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.tool-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.tool-btn {
+  width: 40px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--color-text);
+  transition: background 0.15s, color 0.15s;
+}
+
+.tool-btn:hover {
+  background: var(--color-hover);
+}
+
+.tool-btn.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.tool-divider {
+  width: 28px;
+  height: 1px;
+  background: var(--color-border);
+  margin: 6px 0;
+  flex-shrink: 0;
+}
+/* #endregion */
