@@ -1,9 +1,6 @@
 # Dependencias
 node_modules/
 
-# Archivos de prueba
-test*.js
-
 # Archivos temporales del sistema operativo
 .DS_Store
 Thumbs.db
@@ -24,9 +21,22 @@ npm-debug.log*
 .env
 .env.local
 
-# Archivos de build/dist (si hubiera)
+# Archivos de build/dist
 dist/
 build/
+release/
+out/
 
 # Datos de aplicación guardados localmente
 *.geoflow.json
+
+# Archivos de Electron
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.msi
+
+# Documentación generada
+docs/

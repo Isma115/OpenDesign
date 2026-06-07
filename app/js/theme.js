@@ -47,11 +47,17 @@ export function updateCanvasTheme(theme) {
     const gridPatternLarge = document.getElementById('grid-pattern-large');
     if (gridPattern) {
       const path = gridPattern.querySelector('path');
-      if (path) path.setAttribute('stroke', '#374151');
+      if (path) {
+        path.setAttribute('stroke', '#475569');
+        path.setAttribute('opacity', '0.2');
+      }
     }
     if (gridPatternLarge) {
       const path = gridPatternLarge.querySelector('path');
-      if (path) path.setAttribute('stroke', '#475569');
+      if (path) {
+        path.setAttribute('stroke', '#475569');
+        path.setAttribute('opacity', '0.3');
+      }
     }
     const arrowMarker = document.getElementById('arrow-marker');
     if (arrowMarker) {
@@ -64,11 +70,17 @@ export function updateCanvasTheme(theme) {
     const gridPatternLarge = document.getElementById('grid-pattern-large');
     if (gridPattern) {
       const path = gridPattern.querySelector('path');
-      if (path) path.setAttribute('stroke', '#e5e7eb');
+      if (path) {
+        path.setAttribute('stroke', '#e5e7eb');
+        path.setAttribute('opacity', '0.3');
+      }
     }
     if (gridPatternLarge) {
       const path = gridPatternLarge.querySelector('path');
-      if (path) path.setAttribute('stroke', '#d1d5db');
+      if (path) {
+        path.setAttribute('stroke', '#d1d5db');
+        path.setAttribute('opacity', '0.4');
+      }
     }
     const arrowMarker = document.getElementById('arrow-marker');
     if (arrowMarker) {

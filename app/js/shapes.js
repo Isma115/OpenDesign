@@ -7,9 +7,42 @@ const DEFAULT_CONNECTION_POINTS = [
   { id: 'left', x: 0, y: 0.5 }
 ];
 
+// Paleta para modo claro
+const PALETTE_LIGHT = {
+  default: { fill: '#ffffff', stroke: '#111827', text: '#111827' },
+  flowStart: { fill: '#dcfce7', stroke: '#16a34a', text: '#14532d' },
+  flowProcess: { fill: '#dbeafe', stroke: '#2563eb', text: '#1e3a8a' },
+  flowDecision: { fill: '#fef3c7', stroke: '#d97706', text: '#78350f' },
+  flowIO: { fill: '#ede9fe', stroke: '#7c3aed', text: '#4c1d95' },
+  flowDatabase: { fill: '#fce7f3', stroke: '#db2777', text: '#831843' },
+  flowDocument: { fill: '#f0fdf4', stroke: '#15803d', text: '#14532d' },
+  flowSubprocess: { fill: '#eff6ff', stroke: '#1d4ed8', text: '#1e3a8a' },
+  note: { fill: '#fef9c3', stroke: '#eab308', text: '#713f12' },
+  frame: { fill: 'none', stroke: '#94a3b8', text: '#64748b' }
+};
+
+// Paleta para modo oscuro
+const PALETTE_DARK = {
+  default: { fill: '#1e293b', stroke: '#475569', text: '#f1f5f9' },
+  flowStart: { fill: '#065f46', stroke: '#10b981', text: '#ecfdf5' },
+  flowProcess: { fill: '#1e3a8a', stroke: '#3b82f6', text: '#eff6ff' },
+  flowDecision: { fill: '#78350f', stroke: '#f59e0b', text: '#fffbeb' },
+  flowIO: { fill: '#4c1d95', stroke: '#8b5cf6', text: '#f5f3ff' },
+  flowDatabase: { fill: '#831843', stroke: '#ec4899', text: '#fdf2f8' },
+  flowDocument: { fill: '#14532d', stroke: '#22c55e', text: '#f0fdf4' },
+  flowSubprocess: { fill: '#1e3a8a', stroke: '#60a5fa', text: '#eff6ff' },
+  note: { fill: '#713f12', stroke: '#eab308', text: '#fef9c3' },
+  frame: { fill: 'none', stroke: '#64748b', text: '#94a3b8' }
+};
+
+function getPalette() {
+  const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+  return theme === 'dark' ? PALETTE_DARK : PALETTE_LIGHT;
+}
+
 const DEFAULT_STYLE = {
   fill: '#ffffff',
-  stroke: '#374151',
+  stroke: '#111827',
   strokeWidth: 2,
   opacity: 1,
   dashArray: '',
@@ -21,7 +54,7 @@ const DEFAULT_TEXT = {
   fontFamily: 'Inter, Arial, sans-serif',
   fontSize: 16,
   fontWeight: 400,
-  color: '#1f2937',
+  color: '#111827',
   align: 'center',
   verticalAlign: 'middle'
 };
@@ -155,101 +188,110 @@ export function createText(x, y) {
 }
 
 export function createNote(x, y) {
+  const palette = getPalette();
   return _baseElement({
     shape: 'note',
     x, y,
     width: 180,
     height: 120,
-    style: { ...DEFAULT_STYLE, fill: '#fef3c7', stroke: '#f59e0b', strokeWidth: 1 },
-    text: { ...DEFAULT_TEXT, value: 'Nota', align: 'left', fontSize: 13, color: '#92400e' }
+    style: { ...DEFAULT_STYLE, fill: palette.note.fill, stroke: palette.note.stroke, strokeWidth: 1 },
+    text: { ...DEFAULT_TEXT, value: 'Nota', align: 'left', fontSize: 13, color: palette.note.text }
   });
 }
 
 export function createFrame(x, y, width, height) {
+  const palette = getPalette();
   return _baseElement({
     shape: 'frame',
     x, y,
     width: Math.max(width, 100),
     height: Math.max(height, 80),
-    style: { ...DEFAULT_STYLE, fill: 'none', stroke: '#64748b', strokeWidth: 1, dashArray: '6 3' },
-    text: { ...DEFAULT_TEXT, value: 'Frame', fontSize: 12, verticalAlign: 'top', color: '#94a3b8' }
+    style: { ...DEFAULT_STYLE, fill: palette.frame.fill, stroke: palette.frame.stroke, strokeWidth: 1, dashArray: '6 3' },
+    text: { ...DEFAULT_TEXT, value: 'Frame', fontSize: 12, verticalAlign: 'top', color: palette.frame.text }
   });
 }
 
 export function createFlowStart(x, y, width, height) {
+  const palette = getPalette();
   return _baseElement({
     shape: 'flow-start',
     x, y,
     width: Math.max(width, 120),
     height: Math.max(height, 50),
-    style: { ...DEFAULT_STYLE, fill: '#10b981', stroke: '#059669' },
-    text: { ...DEFAULT_TEXT, value: 'Inicio', color: '#ffffff' }
+    style: { ...DEFAULT_STYLE, fill: palette.flowStart.fill, stroke: palette.flowStart.stroke },
+    text: { ...DEFAULT_TEXT, value: 'Inicio', color: palette.flowStart.text }
   });
 }
 
 export function createFlowProcess(x, y, width, height) {
+  const palette = getPalette();
   return _baseElement({
     shape: 'flow-process',
     x, y,
     width: Math.max(width, 140),
     height: Math.max(height, 60),
-    style: { ...DEFAULT_STYLE, fill: '#3b82f6', stroke: '#2563eb' },
-    text: { ...DEFAULT_TEXT, value: 'Proceso', color: '#ffffff' }
+    style: { ...DEFAULT_STYLE, fill: palette.flowProcess.fill, stroke: palette.flowProcess.stroke },
+    text: { ...DEFAULT_TEXT, value: 'Proceso', color: palette.flowProcess.text }
   });
 }
 
 export function createFlowDecision(x, y, width, height) {
+  const palette = getPalette();
   return _baseElement({
     shape: 'flow-decision',
     x, y,
     width: Math.max(width, 120),
     height: Math.max(height, 80),
-    style: { ...DEFAULT_STYLE, fill: '#f59e0b', stroke: '#d97706' },
-    text: { ...DEFAULT_TEXT, value: 'Decision?', color: '#ffffff' }
+    style: { ...DEFAULT_STYLE, fill: palette.flowDecision.fill, stroke: palette.flowDecision.stroke },
+    text: { ...DEFAULT_TEXT, value: 'Decision?', color: palette.flowDecision.text }
   });
 }
 
 export function createFlowIO(x, y, width, height) {
+  const palette = getPalette();
   return _baseElement({
     shape: 'flow-io',
     x, y,
     width: Math.max(width, 140),
     height: Math.max(height, 60),
-    style: { ...DEFAULT_STYLE, fill: '#8b5cf6', stroke: '#7c3aed' },
-    text: { ...DEFAULT_TEXT, value: 'Entrada/Salida', color: '#ffffff' }
+    style: { ...DEFAULT_STYLE, fill: palette.flowIO.fill, stroke: palette.flowIO.stroke },
+    text: { ...DEFAULT_TEXT, value: 'Entrada/Salida', color: palette.flowIO.text }
   });
 }
 
 export function createFlowDatabase(x, y, width, height) {
+  const palette = getPalette();
   return _baseElement({
     shape: 'flow-database',
     x, y,
     width: Math.max(width, 80),
     height: Math.max(height, 100),
-    style: { ...DEFAULT_STYLE, fill: '#ec4899', stroke: '#db2777' },
-    text: { ...DEFAULT_TEXT, value: 'BD', color: '#ffffff' }
+    style: { ...DEFAULT_STYLE, fill: palette.flowDatabase.fill, stroke: palette.flowDatabase.stroke },
+    text: { ...DEFAULT_TEXT, value: 'BD', color: palette.flowDatabase.text }
   });
 }
 
 export function createFlowDocument(x, y, width, height) {
+  const palette = getPalette();
   return _baseElement({
     shape: 'flow-document',
     x, y,
     width: Math.max(width, 120),
     height: Math.max(height, 80),
-    style: { ...DEFAULT_STYLE, fill: '#14b8a6', stroke: '#0d9488' },
-    text: { ...DEFAULT_TEXT, value: 'Documento', color: '#ffffff' }
+    style: { ...DEFAULT_STYLE, fill: palette.flowDocument.fill, stroke: palette.flowDocument.stroke },
+    text: { ...DEFAULT_TEXT, value: 'Documento', color: palette.flowDocument.text }
   });
 }
 
 export function createFlowSubprocess(x, y, width, height) {
+  const palette = getPalette();
   return _baseElement({
     shape: 'flow-subprocess',
     x, y,
     width: Math.max(width, 140),
     height: Math.max(height, 60),
-    style: { ...DEFAULT_STYLE, fill: '#6366f1', stroke: '#4f46e5' },
-    text: { ...DEFAULT_TEXT, value: 'Subproceso', color: '#ffffff' }
+    style: { ...DEFAULT_STYLE, fill: palette.flowSubprocess.fill, stroke: palette.flowSubprocess.stroke },
+    text: { ...DEFAULT_TEXT, value: 'Subproceso', color: palette.flowSubprocess.text }
   });
 }
 

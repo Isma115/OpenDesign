@@ -39,6 +39,18 @@ export function loadFromLocal() {
 export function downloadJSON() {
   const state = getState();
   const json = JSON.stringify(state.document, null, 2);
+  
+  // Si estamos en Electron, usar diálogo nativo
+  if (window.electronAPI) {
+    window.electronAPI.saveFile(json).then(result => {
+      if (result.success) {
+        setDirty(false);
+      }
+    });
+    return;
+  }
+  
+  // Fallback para navegador
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -52,6 +64,17 @@ export function downloadJSON() {
 }
 
 export function openJSON() {
+  // Si estamos en Electron, usar diálogo nativo
+  if (window.electronAPI) {
+    window.electronAPI.openFile().then(result => {
+      if (result.success && result.content) {
+        handleFileContent(result.content);
+      }
+    });
+    return;
+  }
+  
+  // Fallback para navegador
   const input = document.getElementById('file-input');
   input.click();
 }
@@ -60,23 +83,27 @@ export function handleFileImport(file) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (e) => {
-    try {
-      const doc = JSON.parse(e.target.result);
-      if (!_validateDocument(doc)) {
-        alert('Archivo JSON invalido. Verifica que sea un archivo GeoFlow valido.');
-        return;
-      }
-      loadDocument(doc);
-      renderDocument(doc);
-      refreshSelection();
-      setDirty(false);
-      const nameInput = document.getElementById('doc-name');
-      if (nameInput) nameInput.value = doc.name || 'Sin nombre';
-    } catch (err) {
-      alert('Error al leer el archivo: ' + err.message);
-    }
+    handleFileContent(e.target.result);
   };
   reader.readAsText(file);
+}
+
+function handleFileContent(content) {
+  try {
+    const doc = JSON.parse(content);
+    if (!_validateDocument(doc)) {
+      alert('Archivo JSON invalido. Verifica que sea un archivo GeoFlow valido.');
+      return;
+    }
+    loadDocument(doc);
+    renderDocument(doc);
+    refreshSelection();
+    setDirty(false);
+    const nameInput = document.getElementById('doc-name');
+    if (nameInput) nameInput.value = doc.name || 'Sin nombre';
+  } catch (err) {
+    alert('Error al leer el archivo: ' + err.message);
+  }
 }
 
 function _validateDocument(doc) {

@@ -1,16 +1,49 @@
 {
-  "name": "diseniador",
+  "name": "geoflow-designer",
   "version": "1.0.0",
-  "main": "server.js",
+  "description": "Aplicación de escritorio para diseño de interfaces y diagramas de flujo",
+  "main": "electron-main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "keywords": [
+    "design",
+    "flowchart",
+    "diagram",
+    "wireframe"
+  ],
+  "author": "GeoFlow",
+  "license": "MIT",
   "devDependencies": {
+    "electron": "^41.7.1",
+    "electron-builder": "^24.13.3",
     "puppeteer": "^24.43.1"
+  },
+  "build": {
+    "appId": "com.geoflow.designer",
+    "productName": "GeoFlow Designer",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron-main.js",
+      "preload.js",
+      "app/**/*"
+    ],
+    "win": {
+      "target": ["portable"],
+      "signAndEditExecutable": false
+    },
+    "mac": {
+      "target": ["dmg"]
+    },
+    "linux": {
+      "target": ["AppImage"]
+    }
   }
 }

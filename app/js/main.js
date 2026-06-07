@@ -41,6 +41,43 @@ function main() {
   }
 
   _updateStatusBar();
+
+  // Integración con Electron
+  if (window.electronAPI) {
+    window.electronAPI.onMenuAction((action) => {
+      _handleElectronMenuAction(action);
+    });
+  }
+}
+
+function _handleElectronMenuAction(action) {
+  switch (action) {
+    case 'new':
+      if (confirm('Crear nuevo proyecto? Se perderan cambios no guardados.')) {
+        const { resetDocument } = require('./state.js');
+        resetDocument();
+        renderDocument(getState().document);
+        refreshSelection();
+        const nameInput = document.getElementById('doc-name');
+        if (nameInput) nameInput.value = 'Nuevo diseno';
+      }
+      break;
+    case 'open':
+      import('./storage.js').then(m => m.openJSON());
+      break;
+    case 'save':
+      import('./storage.js').then(m => m.saveToLocal());
+      break;
+    case 'download-json':
+      import('./storage.js').then(m => m.downloadJSON());
+      break;
+    case 'export-svg':
+      import('./export.js').then(m => m.exportAsSVG());
+      break;
+    case 'export-png':
+      import('./export.js').then(m => m.exportAsPNG());
+      break;
+  }
 }
 
 function _updateStatusBar() {

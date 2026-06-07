@@ -2,6 +2,37 @@ import { getNextZIndex } from './state.js';
 
 const _id = () => 'el_' + crypto.randomUUID().slice(0, 12);
 
+function getComponentPalette() {
+  const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+  return theme === 'dark' ? {
+    button: { fill: '#3b82f6', stroke: '#2563eb', text: '#ffffff' },
+    input: { fill: '#1e293b', stroke: '#475569', text: '#94a3b8' },
+    card: { fill: '#1e293b', stroke: '#334155', text: '#f1f5f9' },
+    navbar: { fill: '#0f172a', stroke: '#1e293b', text: '#f1f5f9' },
+    sidebar: { fill: '#1e293b', stroke: '#334155', text: '#94a3b8' },
+    table: { fill: '#1e293b', stroke: '#334155', text: '#f1f5f9', header: '#334155' },
+    checkbox: { fill: '#1e293b', stroke: '#475569', text: '#f1f5f9' },
+    toggle: { fill: '#3b82f6', stroke: '#3b82f6' },
+    avatar: { fill: '#334155', stroke: '#475569', text: '#94a3b8' },
+    modal: { fill: '#1e293b', stroke: '#334155', text: '#f1f5f9' },
+    image: { fill: '#1e293b', stroke: '#475569', text: '#64748b' },
+    textarea: { fill: '#1e293b', stroke: '#475569', text: '#94a3b8' }
+  } : {
+    button: { fill: '#2563eb', stroke: '#1d4ed8', text: '#ffffff' },
+    input: { fill: '#ffffff', stroke: '#d1d5db', text: '#9ca3af' },
+    card: { fill: '#ffffff', stroke: '#e5e7eb', text: '#111827' },
+    navbar: { fill: '#111827', stroke: '#111827', text: '#ffffff' },
+    sidebar: { fill: '#f9fafb', stroke: '#e5e7eb', text: '#6b7280' },
+    table: { fill: '#ffffff', stroke: '#e5e7eb', text: '#111827', header: '#f3f4f6' },
+    checkbox: { fill: '#ffffff', stroke: '#d1d5db', text: '#111827' },
+    toggle: { fill: '#2563eb', stroke: '#2563eb' },
+    avatar: { fill: '#e5e7eb', stroke: '#d1d5db', text: '#6b7280' },
+    modal: { fill: '#ffffff', stroke: '#e5e7eb', text: '#111827' },
+    image: { fill: '#f9fafb', stroke: '#d1d5db', text: '#9ca3af' },
+    textarea: { fill: '#ffffff', stroke: '#d1d5db', text: '#9ca3af' }
+  };
+}
+
 export function createComponentGroup(compType, x, y) {
   const factories = {
     button: _createButton,
@@ -45,14 +76,15 @@ function _shapeEl(overrides) {
 }
 
 function _createButton(x, y) {
+  const palette = getComponentPalette();
   const bgId = _id();
   const textId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'roundedRectangle',
     x, y, width: 120, height: 40,
-    style: _baseStyle({ fill: '#2563eb', stroke: '#1d4ed8', strokeWidth: 1 }),
-    text: _baseText({ value: 'Button', color: '#ffffff', fontSize: 14, fontWeight: 600 })
+    style: _baseStyle({ fill: palette.button.fill, stroke: palette.button.stroke, strokeWidth: 1 }),
+    text: _baseText({ value: 'Button', color: palette.button.text, fontSize: 14, fontWeight: 600 })
   });
   _pendingChildren.set(groupId, [bg]);
   return {
@@ -63,13 +95,14 @@ function _createButton(x, y) {
 }
 
 function _createInput(x, y) {
+  const palette = getComponentPalette();
   const bgId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'roundedRectangle',
     x, y, width: 200, height: 36,
-    style: _baseStyle({ fill: '#ffffff', stroke: '#d1d5db', strokeWidth: 1 }),
-    text: _baseText({ value: 'Placeholder...', color: '#9ca3af', align: 'left', fontSize: 13 })
+    style: _baseStyle({ fill: palette.input.fill, stroke: palette.input.stroke, strokeWidth: 1 }),
+    text: _baseText({ value: 'Placeholder...', color: palette.input.text, align: 'left', fontSize: 13 })
   });
   _pendingChildren.set(groupId, [bg]);
   return {
@@ -80,13 +113,14 @@ function _createInput(x, y) {
 }
 
 function _createTextarea(x, y) {
+  const palette = getComponentPalette();
   const bgId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'roundedRectangle',
     x, y, width: 200, height: 80,
-    style: _baseStyle({ fill: '#ffffff', stroke: '#d1d5db', strokeWidth: 1 }),
-    text: _baseText({ value: '', align: 'left', verticalAlign: 'top', fontSize: 13 })
+    style: _baseStyle({ fill: palette.textarea.fill, stroke: palette.textarea.stroke, strokeWidth: 1 }),
+    text: _baseText({ value: '', align: 'left', verticalAlign: 'top', fontSize: 13, color: palette.textarea.text })
   });
   _pendingChildren.set(groupId, [bg]);
   return {
@@ -97,19 +131,20 @@ function _createTextarea(x, y) {
 }
 
 function _createCheckbox(x, y) {
+  const palette = getComponentPalette();
   const boxId = _id();
   const labelId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const box = _shapeEl({
     id: boxId, shape: 'roundedRectangle',
     x, y: y + 2, width: 18, height: 18,
-    style: _baseStyle({ fill: '#ffffff', stroke: '#d1d5db', strokeWidth: 2 })
+    style: _baseStyle({ fill: palette.checkbox.fill, stroke: palette.checkbox.stroke, strokeWidth: 2 })
   });
   const label = _shapeEl({
     id: labelId, shape: 'text', type: 'text',
     x: x + 26, y, width: 100, height: 22,
     style: _baseStyle({ fill: 'none', stroke: 'none', strokeWidth: 0 }),
-    text: _baseText({ value: 'Checkbox', align: 'left', fontSize: 13 })
+    text: _baseText({ value: 'Checkbox', align: 'left', fontSize: 13, color: palette.checkbox.text })
   });
   _pendingChildren.set(groupId, [box, label]);
   return {
@@ -120,12 +155,13 @@ function _createCheckbox(x, y) {
 }
 
 function _createToggle(x, y) {
+  const palette = getComponentPalette();
   const bgId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'roundedRectangle',
     x, y, width: 44, height: 24,
-    style: _baseStyle({ fill: '#2563eb', stroke: '#2563eb', strokeWidth: 0 })
+    style: _baseStyle({ fill: palette.toggle.fill, stroke: palette.toggle.stroke, strokeWidth: 0 })
   });
   _pendingChildren.set(groupId, [bg]);
   return {
@@ -136,19 +172,20 @@ function _createToggle(x, y) {
 }
 
 function _createCard(x, y) {
+  const palette = getComponentPalette();
   const bgId = _id();
   const titleId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'roundedRectangle',
     x, y, width: 240, height: 160,
-    style: _baseStyle({ fill: '#ffffff', stroke: '#e5e7eb', strokeWidth: 1 })
+    style: _baseStyle({ fill: palette.card.fill, stroke: palette.card.stroke, strokeWidth: 1 })
   });
   const title = _shapeEl({
     id: titleId, shape: 'text', type: 'text',
     x: x + 16, y: y + 16, width: 208, height: 24,
     style: _baseStyle({ fill: 'none', stroke: 'none', strokeWidth: 0 }),
-    text: _baseText({ value: 'Card Title', align: 'left', fontSize: 16, fontWeight: 600 })
+    text: _baseText({ value: 'Card Title', align: 'left', fontSize: 16, fontWeight: 600, color: palette.card.text })
   });
   _pendingChildren.set(groupId, [bg, title]);
   return {
@@ -159,13 +196,14 @@ function _createCard(x, y) {
 }
 
 function _createAvatar(x, y) {
+  const palette = getComponentPalette();
   const bgId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'ellipse',
     x, y, width: 48, height: 48,
-    style: _baseStyle({ fill: '#e5e7eb', stroke: '#d1d5db', strokeWidth: 1 }),
-    text: _baseText({ value: 'A', fontSize: 18, fontWeight: 600, color: '#6b7280' })
+    style: _baseStyle({ fill: palette.avatar.fill, stroke: palette.avatar.stroke, strokeWidth: 1 }),
+    text: _baseText({ value: 'A', fontSize: 18, fontWeight: 600, color: palette.avatar.text })
   });
   _pendingChildren.set(groupId, [bg]);
   return {
@@ -176,14 +214,14 @@ function _createAvatar(x, y) {
 }
 
 function _createNavbar(x, y) {
+  const palette = getComponentPalette();
   const bgId = _id();
-  const titleId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'rectangle',
     x, y, width: 600, height: 48,
-    style: _baseStyle({ fill: '#111827', stroke: '#111827', strokeWidth: 0 }),
-    text: _baseText({ value: 'Navbar', color: '#ffffff', fontSize: 16, fontWeight: 600, align: 'left' })
+    style: _baseStyle({ fill: palette.navbar.fill, stroke: palette.navbar.stroke, strokeWidth: 0 }),
+    text: _baseText({ value: 'Navbar', color: palette.navbar.text, fontSize: 16, fontWeight: 600, align: 'left' })
   });
   _pendingChildren.set(groupId, [bg]);
   return {
@@ -194,13 +232,14 @@ function _createNavbar(x, y) {
 }
 
 function _createSidebar(x, y) {
+  const palette = getComponentPalette();
   const bgId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'rectangle',
     x, y, width: 200, height: 400,
-    style: _baseStyle({ fill: '#f9fafb', stroke: '#e5e7eb', strokeWidth: 1 }),
-    text: _baseText({ value: 'Sidebar', color: '#6b7280', fontSize: 14, verticalAlign: 'top' })
+    style: _baseStyle({ fill: palette.sidebar.fill, stroke: palette.sidebar.stroke, strokeWidth: 1 }),
+    text: _baseText({ value: 'Sidebar', color: palette.sidebar.text, fontSize: 14, verticalAlign: 'top' })
   });
   _pendingChildren.set(groupId, [bg]);
   return {
@@ -211,19 +250,20 @@ function _createSidebar(x, y) {
 }
 
 function _createTable(x, y) {
+  const palette = getComponentPalette();
   const bgId = _id();
   const headerId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'rectangle',
     x, y, width: 400, height: 200,
-    style: _baseStyle({ fill: '#ffffff', stroke: '#e5e7eb', strokeWidth: 1 })
+    style: _baseStyle({ fill: palette.table.fill, stroke: palette.table.stroke, strokeWidth: 1 })
   });
   const header = _shapeEl({
     id: headerId, shape: 'rectangle',
     x, y, width: 400, height: 36,
-    style: _baseStyle({ fill: '#f3f4f6', stroke: '#e5e7eb', strokeWidth: 1 }),
-    text: _baseText({ value: 'Header', fontSize: 13, fontWeight: 600, align: 'left', verticalAlign: 'middle' })
+    style: _baseStyle({ fill: palette.table.header, stroke: palette.table.stroke, strokeWidth: 1 }),
+    text: _baseText({ value: 'Header', fontSize: 13, fontWeight: 600, align: 'left', verticalAlign: 'middle', color: palette.table.text })
   });
   _pendingChildren.set(groupId, [bg, header]);
   return {
@@ -234,13 +274,14 @@ function _createTable(x, y) {
 }
 
 function _createImage(x, y) {
+  const palette = getComponentPalette();
   const bgId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'rectangle',
     x, y, width: 200, height: 150,
-    style: _baseStyle({ fill: '#f9fafb', stroke: '#d1d5db', strokeWidth: 1, dashArray: '6 3' }),
-    text: _baseText({ value: 'Imagen', color: '#9ca3af', fontSize: 14 })
+    style: _baseStyle({ fill: palette.image.fill, stroke: palette.image.stroke, strokeWidth: 1, dashArray: '6 3' }),
+    text: _baseText({ value: 'Imagen', color: palette.image.text, fontSize: 14 })
   });
   _pendingChildren.set(groupId, [bg]);
   return {
@@ -251,19 +292,20 @@ function _createImage(x, y) {
 }
 
 function _createModal(x, y) {
+  const palette = getComponentPalette();
   const bgId = _id();
   const titleId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'roundedRectangle',
     x, y, width: 360, height: 240,
-    style: _baseStyle({ fill: '#ffffff', stroke: '#e5e7eb', strokeWidth: 1 })
+    style: _baseStyle({ fill: palette.modal.fill, stroke: palette.modal.stroke, strokeWidth: 1 })
   });
   const title = _shapeEl({
     id: titleId, shape: 'text', type: 'text',
     x: x + 20, y: y + 16, width: 320, height: 24,
     style: _baseStyle({ fill: 'none', stroke: 'none', strokeWidth: 0 }),
-    text: _baseText({ value: 'Modal Title', align: 'left', fontSize: 16, fontWeight: 600 })
+    text: _baseText({ value: 'Modal Title', align: 'left', fontSize: 16, fontWeight: 600, color: palette.modal.text })
   });
   _pendingChildren.set(groupId, [bg, title]);
   return {
