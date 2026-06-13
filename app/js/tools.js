@@ -148,16 +148,28 @@ function _onDblClick(e) {
 function _onWheel(e) {
   e.preventDefault();
   const state = getState();
-  if (e.ctrlKey) {
-    const delta = e.deltaY > 0 ? -0.05 : 0.05;
-    const newZoom = Math.min(5, Math.max(0.1, state.viewport.zoom + delta));
+  const wrapper = document.getElementById('canvas-wrapper');
+  const container = document.getElementById('canvas-container');
+  const rect = container.getBoundingClientRect();
+
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  const oldZoom = state.viewport.zoom;
+  const delta = e.deltaY > 0 ? -0.08 : 0.08;
+  const newZoom = Math.min(5, Math.max(0.1, oldZoom + delta));
+
+  if (newZoom !== oldZoom) {
+    const scrollLeft = wrapper.scrollLeft;
+    const scrollTop = wrapper.scrollTop;
+
+    const zoomRatio = newZoom / oldZoom;
+    wrapper.scrollLeft = scrollLeft * zoomRatio + mouseX * (zoomRatio - 1);
+    wrapper.scrollTop = scrollTop * zoomRatio + mouseY * (zoomRatio - 1);
+
     state.viewport.zoom = newZoom;
     applyViewport(state.viewport);
     _updateZoomUI(newZoom);
-  } else {
-    const wrapper = document.getElementById('canvas-wrapper');
-    wrapper.scrollLeft += e.deltaX || e.deltaY;
-    wrapper.scrollTop += e.deltaY;
   }
 }
 

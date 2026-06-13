@@ -33,6 +33,15 @@
 #canvas.tool-note { cursor: crosshair; }
 #canvas.tool-zoom { cursor: zoom-in; }
 
+#canvas-wrapper {
+  overflow: auto;
+}
+
+#canvas-container {
+  width: max-content;
+  height: max-content;
+}
+
 .element-shape {
   cursor: move;
 }

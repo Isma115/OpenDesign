@@ -32,6 +32,7 @@ function main() {
   subscribe(() => {
     refreshPropertiesPanel();
     _updateStatusBar();
+    updateToolUI();
   });
 
   initAutoSave();
