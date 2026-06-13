@@ -1,3 +1,4 @@
+// #region Inicializacion de la aplicacion | Funcionalidad | arranque y configuracion inicial
 import { getState, subscribe } from './state.js';
 import { initRenderer, renderDocument, applyViewport } from './renderer.js';
 import { initSelection, refreshSelection } from './selection.js';
@@ -101,3 +102,4 @@ function _updateStatusBar() {
 }
 
 main();
+// #endregion

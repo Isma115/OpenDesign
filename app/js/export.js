@@ -1,3 +1,4 @@
+// #region Exportacion de archivos | Funcionalidad | exportar a JSON, SVG y PNG
 import { getState } from './state.js';
 
 export function exportAsJSON() {
@@ -123,3 +124,4 @@ export function exportAsPNG() {
   };
   img.src = url;
 }
+// #endregion

@@ -1,3 +1,4 @@
+// #region Herramientas de dibujo | Funcionalidad | manejo de interacciones del lienzo
 import { getState, setActiveTool, addElement, updateElement, removeElement, setSelection, clearSelection, getElementById } from './state.js';
 import { screenToCanvas, getElementBounds } from './geometry.js';
 import { createShapeByTool } from './shapes.js';
@@ -596,3 +597,4 @@ let _shiftHeld = false;
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Shift') _shiftHeld = true; });
 document.addEventListener('keyup', (e) => { if (e.key === 'Shift') _shiftHeld = false; });
+// #endregion

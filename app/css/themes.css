@@ -36,6 +36,40 @@
   stroke: #374151 !important;
 }
 
+[data-theme="dark"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: #111827;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+[data-theme="dark"] #panel-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+[data-theme="dark"] #panel-content::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+[data-theme="dark"] #left-toolbar::-webkit-scrollbar {
+  width: 3px;
+}
+
+[data-theme="dark"] #left-toolbar::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
 ::selection {
   background: rgba(37, 99, 235, 0.2);
 }

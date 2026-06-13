@@ -1,3 +1,4 @@
+// #region Interfaz de usuario | Funcionalidad | inicializacion y gestion de la UI
 import { getState, updateElement, updateDocument, setSelection, clearSelection, getElementById, getSelectedElements, setActiveTool, addElement, removeElement, resetDocument } from './state.js';
 import { renderDocument, applyViewport } from './renderer.js';
 import { refreshSelection } from './selection.js';
@@ -739,3 +740,4 @@ export function refreshPropertiesPanel() {
 export function refreshLayersPanel() {
   _updateLayersPanel();
 }
+// #endregion

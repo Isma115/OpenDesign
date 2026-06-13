@@ -1,3 +1,4 @@
+// #region Estado global de la aplicacion | Funcionalidad | gestion del estado y notificaciones a suscriptores
 const _state = {
   document: {
     id: 'doc_' + crypto.randomUUID().slice(0, 8),
@@ -216,3 +217,4 @@ export function resetDocument() {
   _state.dirty = false;
   _notify();
 }
+// #endregion

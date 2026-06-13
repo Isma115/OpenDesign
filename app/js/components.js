@@ -1,3 +1,4 @@
+// #region Componentes UI | Funcionalidad | creacion de componentes arrastrables
 import { getNextZIndex } from './state.js';
 
 const _id = () => 'el_' + crypto.randomUUID().slice(0, 12);
@@ -322,3 +323,4 @@ export function getPendingChildren(groupId) {
   _pendingChildren.delete(groupId);
   return children;
 }
+// #endregion

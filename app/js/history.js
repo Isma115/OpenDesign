@@ -1,3 +1,4 @@
+// #region Historial de cambios | Funcionalidad | deshacer y rehacer acciones
 import { getState, setState, loadDocument, setDirty } from './state.js';
 import { renderDocument } from './renderer.js';
 import { refreshSelection } from './selection.js';
@@ -105,3 +106,4 @@ export function canUndo() {
 export function canRedo() {
   return getState().history.future.length > 0;
 }
+// #endregion

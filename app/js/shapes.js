@@ -1,3 +1,4 @@
+// #region Creacion de figuras | Funcionalidad | fabricas de formas geometricas y nodos de flujo
 import { getNextZIndex } from './state.js';
 
 const DEFAULT_CONNECTION_POINTS = [
@@ -396,3 +397,4 @@ export function getShapeDisplayName(shape) {
   };
   return names[shape] || shape;
 }
+// #endregion

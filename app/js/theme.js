@@ -1,3 +1,4 @@
+// #region Gestion de temas | Funcionalidad | cambio entre modo claro y oscuro
 const THEME_KEY = 'geoflow_theme';
 
 export function initTheme() {
@@ -93,3 +94,4 @@ export function updateCanvasTheme(theme) {
 export function getTheme() {
   return document.documentElement.getAttribute('data-theme') || 'dark';
 }
+// #endregion

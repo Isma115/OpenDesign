@@ -1,3 +1,4 @@
+// #region Utilidades geometricas | Funcionalidad | calculos de coordenadas y bounding boxes
 export function screenToCanvas(clientX, clientY, viewport) {
   const canvas = document.getElementById('canvas');
   const wrapper = document.getElementById('canvas-wrapper');
@@ -155,3 +156,4 @@ export function getAngleBetweenPoints(p1, p2) {
 export function rectsIntersect(r1, r2) {
   return !(r1.right < r2.x || r2.right < r1.x || r1.bottom < r2.y || r2.bottom < r1.y);
 }
+// #endregion

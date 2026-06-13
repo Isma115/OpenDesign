@@ -1,3 +1,4 @@
+// #region Puente de Electron | Backend | APIs seguras expuestas al renderer
 const { contextBridge, ipcRenderer } = require('electron');
 
 // Exponer APIs seguras al renderer
@@ -15,3 +16,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: () => '1.0.0',
   getPlatform: () => process.platform
 });
+// #endregion

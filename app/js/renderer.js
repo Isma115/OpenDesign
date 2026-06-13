@@ -1,3 +1,4 @@
+// #region Renderizador SVG | Funcionalidad | renderizado de elementos en el lienzo SVG
 import { getElementBounds } from './geometry.js';
 
 export const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -656,3 +657,4 @@ function _sanitizeText(text) {
   div.textContent = text;
   return div.textContent;
 }
+// #endregion

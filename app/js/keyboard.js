@@ -1,3 +1,4 @@
+// #region Atajos de teclado | Funcionalidad | manejo de eventos de teclado y acciones
 import { getState, setActiveTool, setSelection, clearSelection, getSelectedElements, getElementById, addElement, removeElement } from './state.js';
 import { undo, redo, commitAction, snapshotElements } from './history.js';
 import { renderDocument, applyViewport } from './renderer.js';
@@ -281,3 +282,4 @@ function _updateToolUI() {
 }
 
 export function updateToolUI() { _updateToolUI(); }
+// #endregion

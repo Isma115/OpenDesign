@@ -1,3 +1,4 @@
+// #region Persistencia local | Funcionalidad | guardado y carga de documentos
 import { getState, loadDocument, setDirty, updateDocument } from './state.js';
 import { renderDocument } from './renderer.js';
 import { refreshSelection } from './selection.js';
@@ -128,3 +129,4 @@ export function initAutoSave() {
     }
   }, 30000);
 }
+// #endregion

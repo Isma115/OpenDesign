@@ -1,3 +1,4 @@
+// #region Sistema de snapping | Funcionalidad | ajuste a cuadricula y objetos
 import { getState } from './state.js';
 import { getElementBounds, snapToGrid } from './geometry.js';
 
@@ -77,3 +78,4 @@ export function snapPoint(x, y) {
     y: snapToGrid(y, gridSize)
   };
 }
+// #endregion

@@ -1,3 +1,4 @@
+// #region Conectores | Funcionalidad | ruteo y gestion de conectores entre figuras
 import { getState, getElementById, updateElement } from './state.js';
 import { createConnector } from './shapes.js';
 import { commitAction } from './history.js';
@@ -132,3 +133,4 @@ export function findNearestConnectionPoint(element, point) {
   }
   return nearest;
 }
+// #endregion

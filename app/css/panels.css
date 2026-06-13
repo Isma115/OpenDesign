@@ -161,6 +161,7 @@
   border-color: #ef4444;
   color: #ef4444;
 }
+/* #endregion */
 
 /* #region Lista de capas | Panel | listado de elementos por capa */
 .layers-list {
@@ -381,7 +382,6 @@
   background: white;
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
-/* #endregion */
 /* #endregion */
 
 /* #region Barra inferior | Panel | estado, coordenadas y zoom */

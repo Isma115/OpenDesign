@@ -1,3 +1,4 @@
+// #region Proceso principal Electron | Backend | ventana principal, menu y handlers IPC
 const { app, BrowserWindow, Menu, dialog, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -167,3 +168,4 @@ app.on('activate', () => {
     createWindow();
   }
 });
+// #endregion
