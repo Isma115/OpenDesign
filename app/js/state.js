@@ -1,4 +1,6 @@
 // #region Estado global de la aplicacion | Funcionalidad | gestion del estado y notificaciones a suscriptores
+import { createDefaultStyles, ensureDocumentStyles } from './css-template.js';
+
 const _state = {
   document: {
     id: 'doc_' + crypto.randomUUID().slice(0, 8),
@@ -18,6 +20,7 @@ const _state = {
     },
     elements: [],
     pages: [],
+    styles: createDefaultStyles(),
     metadata: {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -95,6 +98,10 @@ export function updateElement(id, patch) {
   if (patch.text) {
     el.text = Object.assign({}, el.text, patch.text);
     delete patch.text;
+  }
+  if (patch.css) {
+    el.css = Object.assign({}, el.css, patch.css);
+    delete patch.css;
   }
   Object.assign(el, patch);
   _state.document.metadata.updatedAt = new Date().toISOString();
@@ -184,6 +191,7 @@ function _notify() {
 }
 
 export function loadDocument(docModel) {
+  ensureDocumentStyles(docModel);
   _state.document = docModel;
   _state.selectedElementIds = [];
   _state.history = { past: [], future: [] };
@@ -206,6 +214,7 @@ export function resetDocument() {
     },
     elements: [],
     pages: [],
+    styles: createDefaultStyles(),
     metadata: {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()

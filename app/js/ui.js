@@ -4,18 +4,28 @@ import { renderDocument, applyViewport } from './renderer.js';
 import { refreshSelection } from './selection.js';
 import { commitAction, snapshotElements } from './history.js';
 import { downloadJSON, openJSON, handleFileImport, saveToLocal } from './storage.js';
-import { exportAsSVG, exportAsPNG } from './export.js';
+import { exportAsHTML, exportAsSVG, exportAsPNG } from './export.js';
 import { getShapeDisplayName, createGroup } from './shapes.js';
 import { zoomBy, setZoom, updateToolUI } from './keyboard.js';
 import { getElementBounds, getMultiSelectionBounds } from './geometry.js';
 import { updateConnectorPath, updateAllConnectorsForElement } from './connectors.js';
 import { createComponentGroup, getPendingChildren } from './components.js';
 import { toggleTheme } from './theme.js';
+import { copySelectedElements, pasteClipboardElements } from './clipboard.js';
+import {
+  CSS_TEMPLATE_VISUAL_FIELDS,
+  getCssClassForElement,
+  getSpecificCssForElement,
+  getVisualCssValues,
+  updateVisualCssValue,
+  validateVisualCss
+} from './css-template.js';
 
 export function initUI() {
   _initMenuBars();
   _initPanelTabs();
   _initPropertyInputs();
+  _initCssTemplateEditor();
   _initTopbarActions();
   _initFileInput();
   _initComponentDrag();
@@ -113,6 +123,8 @@ function _initPropertyInputs() {
   bind('prop-text-color', () => _updateTextFromInput('color', 'prop-text-color'));
   bind('prop-text-align', () => _updateTextFromInput('align', 'prop-text-align'));
   bind('prop-font-weight', () => _updateTextFromInput('fontWeight', v => parseInt(document.getElementById('prop-font-weight').value)));
+  bind('prop-css-class', () => _updateCssFromInput('className', 'prop-css-class'));
+  bind('prop-component-css', () => _updateCssFromInput('rules', 'prop-component-css'));
 
   bind('prop-canvas-width', () => {
     const val = parseInt(document.getElementById('prop-canvas-width').value);
@@ -297,6 +309,7 @@ function _handleAction(action) {
     case 'open': openJSON(); break;
     case 'save': saveToLocal(); _updateStatusSaved(); break;
     case 'download-json': downloadJSON(); break;
+    case 'export-html': exportAsHTML(); break;
     case 'export-svg': exportAsSVG(); break;
     case 'export-png': exportAsPNG(); break;
     case 'undo': import('./history.js').then(m => m.undo()); break;
@@ -341,33 +354,11 @@ function _handleAction(action) {
 }
 
 function _handleCopy() {
-  const state = getState();
-  state.clipboard = getSelectedElements().map(e => JSON.parse(JSON.stringify(e)));
+  copySelectedElements();
 }
 
 function _handlePaste() {
-  const state = getState();
-  if (state.clipboard.length === 0) return;
-  const before = snapshotElements();
-  const newIds = [];
-  for (const el of state.clipboard) {
-    const copy = JSON.parse(JSON.stringify(el));
-    copy.id = el.type === 'connector'
-      ? 'conn_' + crypto.randomUUID().slice(0, 12)
-      : 'el_' + crypto.randomUUID().slice(0, 12);
-    copy.x = (copy.x || 0) + 20;
-    copy.y = (copy.y || 0) + 20;
-    if (copy.points) {
-      copy.points = copy.points.map(p => ({ x: p.x + 20, y: p.y + 20 }));
-    }
-    addElement(copy);
-    newIds.push(copy.id);
-  }
-  setSelection(newIds);
-  const after = snapshotElements();
-  commitAction({ type: 'snapshot', before, after });
-  renderDocument(state.document);
-  refreshSelection();
+  pasteClipboardElements();
 }
 
 function _handleDuplicate() {
@@ -458,6 +449,7 @@ function _updatePropertiesPanel() {
   if (propShape) propShape.style.display = 'none';
   if (propConnector) propConnector.style.display = 'none';
   if (propEmpty) propEmpty.style.display = 'none';
+  _fillGlobalStylesPanel();
 
   if (state.selectedElementIds.length === 0) {
     if (propCanvas) propCanvas.style.display = 'block';
@@ -514,8 +506,20 @@ function _fillShapeProps(el) {
     _setVal('prop-text-align', el.text.align || 'center');
     _setVal('prop-font-weight', el.text.fontWeight || 400);
   }
+  _setVal('prop-css-class', getCssClassForElement(el));
+  _setVal('prop-component-css', getSpecificCssForElement(el));
   const lockBtn = document.getElementById('btn-lock');
   if (lockBtn) lockBtn.textContent = el.locked ? '\uD83D\uDD12' : '\uD83D\uDD13';
+}
+
+function _fillGlobalStylesPanel() {
+  const state = getState();
+  const css = state.document.styles?.globalTemplateCss || '';
+  const input = document.getElementById('prop-global-css-template');
+  if (input && input.value !== css) input.value = css;
+  _syncCssCodeHighlight(css);
+  _syncVisualCssFields(css);
+  _renderGlobalCssWarnings(css);
 }
 
 function _fillConnectorProps(el) {
@@ -534,6 +538,142 @@ function _fillConnectorProps(el) {
 function _setVal(id, val) {
   const el = document.getElementById(id);
   if (el) el.value = val;
+}
+
+function _bindLiveInput(id, handler) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', handler);
+  el.addEventListener('change', handler);
+}
+
+function _initCssTemplateEditor() {
+  _buildVisualCssEditor();
+  _bindLiveInput('prop-global-css-template', _updateGlobalCssTemplate);
+
+  const textarea = document.getElementById('prop-global-css-template');
+  const highlight = document.getElementById('global-css-highlight');
+  if (textarea && highlight) {
+    textarea.addEventListener('scroll', () => {
+      highlight.scrollTop = textarea.scrollTop;
+      highlight.scrollLeft = textarea.scrollLeft;
+    });
+  }
+
+  document.querySelectorAll('.css-mode-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.css-mode-tab').forEach(item => item.classList.remove('active'));
+      document.querySelectorAll('#tab-styles .css-mode-panel').forEach(panel => panel.classList.remove('active'));
+      btn.classList.add('active');
+      const panel = document.getElementById(btn.dataset.cssMode === 'code' ? 'css-code-editor' : 'css-visual-editor');
+      if (panel) panel.classList.add('active');
+    });
+  });
+}
+
+function _buildVisualCssEditor() {
+  const tokenGrid = document.querySelector('[data-css-visual-group="tokens"]');
+  const componentGrid = document.querySelector('[data-css-visual-group="components"]');
+  if (!tokenGrid || !componentGrid) return;
+  tokenGrid.innerHTML = '';
+  componentGrid.innerHTML = '';
+
+  for (const field of CSS_TEMPLATE_VISUAL_FIELDS) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'css-visual-field';
+    const inputType = field.type === 'color' ? 'color' : 'text';
+    wrapper.innerHTML = `
+      <label for="css-visual-${field.id}">${field.label}</label>
+      <input id="css-visual-${field.id}" type="${inputType}" data-css-field="${field.id}" spellcheck="false">
+    `;
+    const input = wrapper.querySelector('input');
+    input.addEventListener('input', () => _updateVisualCssField(field.id, input.value));
+    const target = field.selector === ':root' ? tokenGrid : componentGrid;
+    target.appendChild(wrapper);
+  }
+}
+
+function _updateGlobalCssTemplate() {
+  const input = document.getElementById('prop-global-css-template');
+  if (!input) return;
+  updateDocument(doc => {
+    if (!doc.styles) doc.styles = {};
+    doc.styles.globalTemplateCss = input.value;
+  });
+  _syncCssCodeHighlight(input.value);
+  _syncVisualCssFields(input.value);
+  _renderGlobalCssWarnings(input.value);
+}
+
+function _updateVisualCssField(fieldId, value) {
+  const state = getState();
+  const currentCss = state.document.styles?.globalTemplateCss || '';
+  const nextCss = updateVisualCssValue(currentCss, fieldId, value);
+  updateDocument(doc => {
+    if (!doc.styles) doc.styles = {};
+    doc.styles.globalTemplateCss = nextCss;
+  });
+  const input = document.getElementById('prop-global-css-template');
+  if (input) input.value = nextCss;
+  _syncCssCodeHighlight(nextCss);
+  _renderGlobalCssWarnings(nextCss);
+}
+
+function _syncVisualCssFields(cssText) {
+  const values = getVisualCssValues(cssText);
+  for (const field of CSS_TEMPLATE_VISUAL_FIELDS) {
+    const input = document.querySelector(`[data-css-field="${field.id}"]`);
+    if (!input) continue;
+    const value = values[field.id] || field.fallback;
+    if (input.type === 'color' && !/^#[0-9a-f]{6}$/i.test(value)) continue;
+    if (input.value !== value) input.value = value;
+  }
+}
+
+function _syncCssCodeHighlight(cssText) {
+  const highlight = document.getElementById('global-css-highlight');
+  if (!highlight) return;
+  highlight.innerHTML = _highlightCss(cssText);
+}
+
+function _highlightCss(cssText) {
+  const escaped = _escapeForHTML(cssText || '');
+  return escaped
+    .replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="css-code-token-comment">$1</span>')
+    .replace(/(^|\n)([^{}\n]+)(\s*\{)/g, (full, lineStart, selector, brace) => {
+      return `${lineStart}<span class="css-code-token-selector">${selector}</span><span class="css-code-token-punctuation">${brace}</span>`;
+    })
+    .replace(/([\w-]+)(\s*:)(\s*)([^;\n}]+)(;?)/g, (full, property, colon, space, value, semicolon) => {
+      return `<span class="css-code-token-property">${property}</span><span class="css-code-token-punctuation">${colon}</span>${space}<span class="css-code-token-value">${value}</span><span class="css-code-token-punctuation">${semicolon}</span>`;
+    })
+    .replace(/([{}])/g, '<span class="css-code-token-punctuation">$1</span>');
+}
+
+function _escapeForHTML(value) {
+  const div = document.createElement('div');
+  div.textContent = String(value ?? '');
+  return div.innerHTML;
+}
+
+function _updateCssFromInput(prop, inputId) {
+  const state = getState();
+  if (state.selectedElementIds.length !== 1) return;
+  const el = getElementById(state.selectedElementIds[0]);
+  const input = document.getElementById(inputId);
+  if (!el || !input) return;
+  const before = snapshotElements();
+  updateElement(el.id, { css: { ...el.css, [prop]: input.value } });
+  const after = snapshotElements();
+  commitAction({ type: 'snapshot', before, after });
+}
+
+function _renderGlobalCssWarnings(cssText) {
+  const warning = document.getElementById('global-css-warning');
+  if (!warning) return;
+  const issues = validateVisualCss(cssText);
+  warning.textContent = issues.length
+    ? `No se exportaran estas propiedades de layout en la plantilla global: ${[...new Set(issues.map(issue => issue.property))].join(', ')}.`
+    : '';
 }
 
 function _updateLayersPanel() {

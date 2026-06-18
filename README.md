@@ -44,9 +44,20 @@ Los instaladores se generarán en la carpeta `dist/`.
 - Diagramas de flujo con conectores
 - Selección múltiple y agrupación
 - Panel de propiedades
-- Exportación a SVG, PNG y JSON
+- Exportación a HTML, SVG, PNG y JSON
+- Plantilla CSS global para estilos visuales reutilizables de componentes HTML
 - Modo oscuro/claro
 - Guardado automático
+
+## Plantilla CSS global
+
+La pestaña `CSS` del panel derecho permite editar una plantilla global que se guarda dentro del archivo `.geoflow.json`. Esta plantilla define clases reutilizables como `.gf-button`, `.gf-input`, `.gf-card`, `.gf-navbar`, `.gf-sidebar`, `.gf-table` y `.gf-modal`.
+
+La plantilla tiene dos modos de edicion. `Visual` modifica tokens y reglas frecuentes mediante controles de color y campos simples. `Codigo` permite editar el CSS completo en un editor oscuro con fuente y resaltado de sintaxis inspirado en Visual Studio Code.
+
+La plantilla global debe contener solo reglas visuales: colores, tipografia, padding, bordes, radios, sombras, fondos y estados como `:hover`, `:focus` o `:disabled`. Si se escriben propiedades de layout o posicionamiento como `position`, `display`, `grid`, `flex`, `margin`, `top`, `left`, `width` o `height`, el editor las advierte y las omite al exportar HTML.
+
+Cada elemento seleccionado tiene una seccion `CSS HTML` en sus propiedades. `Clases globales` indica que clases de la plantilla usa el componente. `CSS especifico` permite escribir reglas unicas para ese componente; estas reglas se exportan despues de la plantilla global y por eso pueden sobrescribirla cuando sea necesario.
 
 ## Tecnologías
 

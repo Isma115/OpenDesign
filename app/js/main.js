@@ -73,6 +73,9 @@ function _handleElectronMenuAction(action) {
     case 'download-json':
       import('./storage.js').then(m => m.downloadJSON());
       break;
+    case 'export-html':
+      import('./export.js').then(m => m.exportAsHTML());
+      break;
     case 'export-svg':
       import('./export.js').then(m => m.exportAsSVG());
       break;

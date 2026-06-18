@@ -33,6 +33,7 @@
             <button data-action="save" aria-label="Guardar localmente">Guardar</button>
             <button data-action="download-json" aria-label="Descargar JSON">Descargar JSON</button>
             <hr>
+            <button data-action="export-html" aria-label="Exportar como HTML">Exportar HTML</button>
             <button data-action="export-svg" aria-label="Exportar como SVG">Exportar SVG</button>
             <button data-action="export-png" aria-label="Exportar como PNG">Exportar PNG</button>
           </div>
@@ -330,6 +331,7 @@
           <button class="panel-tab active" data-tab="properties" aria-label="Propiedades">Propiedades</button>
           <button class="panel-tab" data-tab="layers" aria-label="Capas">Capas</button>
           <button class="panel-tab" data-tab="components" aria-label="Componentes">Componentes</button>
+          <button class="panel-tab" data-tab="styles" aria-label="CSS">CSS</button>
         </div>
 
         <div id="panel-content">
@@ -459,6 +461,17 @@
                 </select>
               </div>
 
+              <h3 class="panel-title">CSS HTML</h3>
+              <div class="prop-group">
+                <label>Clases globales</label>
+                <input type="text" id="prop-css-class" placeholder="gf-button">
+              </div>
+              <div class="prop-group">
+                <label>CSS especifico</label>
+                <textarea id="prop-component-css" class="code-textarea" rows="7"
+                  placeholder=".gf-el-id {&#10;  background: #ffffff;&#10;}"></textarea>
+              </div>
+
               <h3 class="panel-title">Organizar</h3>
               <div class="prop-actions">
                 <button data-action="bring-front" aria-label="Traer al frente" title="Al frente">&#8676;</button>
@@ -569,6 +582,30 @@
                 <span class="comp-preview comp-modal"></span>
                 <span>Modal</span>
               </button>
+            </div>
+          </div>
+
+          <div id="tab-styles" class="tab-content" style="display:none">
+            <div class="panel-section">
+              <h3 class="panel-title">Plantilla CSS global</h3>
+              <div class="css-mode-tabs" role="tablist" aria-label="Modo de edicion CSS">
+                <button class="css-mode-tab active" data-css-mode="visual" type="button">Visual</button>
+                <button class="css-mode-tab" data-css-mode="code" type="button">Codigo</button>
+              </div>
+              <div id="css-visual-editor" class="css-mode-panel active">
+                <h4 class="css-group-title">Tokens base</h4>
+                <div class="css-visual-grid" data-css-visual-group="tokens"></div>
+                <h4 class="css-group-title">Componentes</h4>
+                <div class="css-visual-grid" data-css-visual-group="components"></div>
+              </div>
+              <div class="prop-group">
+                <div id="css-code-editor" class="css-code-editor css-mode-panel">
+                  <pre id="global-css-highlight" aria-hidden="true"></pre>
+                  <textarea id="prop-global-css-template" class="css-code-input" rows="24" spellcheck="false"
+                    aria-label="Codigo CSS de plantilla global"></textarea>
+                </div>
+              </div>
+              <div id="global-css-warning" class="css-warning" aria-live="polite"></div>
             </div>
           </div>
         </div>

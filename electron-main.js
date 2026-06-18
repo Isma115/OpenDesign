@@ -49,6 +49,10 @@ function createWindow() {
         },
         { type: 'separator' },
         {
+          label: 'Exportar HTML',
+          click: () => mainWindow.webContents.send('menu-action', 'export-html')
+        },
+        {
           label: 'Exportar SVG',
           click: () => mainWindow.webContents.send('menu-action', 'export-svg')
         },

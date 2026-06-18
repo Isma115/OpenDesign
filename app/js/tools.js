@@ -123,6 +123,7 @@ function _onPointerUp(e) {
     _lastClickPoint = point;
 
     if (isDblClick) {
+      _cancelActiveInteraction();
       _handleDblClick(point);
       _pointerDownPos = null;
       return;
@@ -560,7 +561,8 @@ function _endPan(e) {
 }
 
 function _startTextEdit(el) {
-  const svg = getSvgCanvas();
+  _cancelActiveInteraction();
+  const restoreEditedText = _hideRenderedTextForEdit(el.id);
   const bounds = getElementBounds(el);
   const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
   fo.setAttribute('x', bounds.x);
@@ -575,6 +577,9 @@ function _startTextEdit(el) {
   textarea.style.textAlign = el.text?.align || 'center';
   textarea.style.color = el.text?.color || '#111827';
   textarea.style.fontFamily = el.text?.fontFamily || 'Inter, Arial, sans-serif';
+  textarea.style.background = el.style?.fill && el.style.fill !== 'none'
+    ? el.style.fill
+    : 'transparent';
 
   fo.appendChild(textarea);
   const previewLayer = document.getElementById('preview-layer');
@@ -593,9 +598,16 @@ function _startTextEdit(el) {
     const after = snapshotElements();
     commitAction({ type: 'snapshot', before, after });
     if (fo.parentNode) previewLayer.removeChild(fo);
+    restoreEditedText();
     renderDocument(getState().document);
     refreshSelection();
   };
+
+  ['pointerdown', 'pointermove', 'pointerup', 'click', 'dblclick'].forEach(eventName => {
+    textarea.addEventListener(eventName, (e) => {
+      e.stopPropagation();
+    });
+  });
 
   textarea.addEventListener('blur', finish);
   textarea.addEventListener('keydown', (e) => {
@@ -603,6 +615,9 @@ function _startTextEdit(el) {
       cancelled = true;
       textarea.removeEventListener('blur', finish);
       if (fo.parentNode) previewLayer.removeChild(fo);
+      restoreEditedText();
+      renderDocument(getState().document);
+      refreshSelection();
     }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -610,6 +625,49 @@ function _startTextEdit(el) {
     }
     e.stopPropagation();
   });
+}
+
+function _hideRenderedTextForEdit(elementId) {
+  const hiddenNodes = [];
+  document.querySelectorAll('[data-element-id]').forEach(node => {
+    if (node.dataset.elementId !== elementId) return;
+    if (node.classList?.contains('text-element')) {
+      hiddenNodes.push({ node, visibility: node.style.visibility });
+    }
+    node.querySelectorAll?.('.text-element').forEach(textNode => {
+      hiddenNodes.push({ node: textNode, visibility: textNode.style.visibility });
+    });
+  });
+
+  hiddenNodes.forEach(({ node }) => {
+    node.style.visibility = 'hidden';
+  });
+
+  return () => {
+    hiddenNodes.forEach(({ node, visibility }) => {
+      node.style.visibility = visibility;
+    });
+  };
+}
+
+function _cancelActiveInteraction() {
+  const state = getState();
+  state.interaction.isDragging = false;
+  state.interaction.isDrawing = false;
+  state.interaction.isPanning = false;
+  state.interaction.isRotating = false;
+  state.interaction.isResizing = false;
+  state.interaction.isConnecting = false;
+  state.interaction.dragStart = null;
+  state.interaction.resizeHandle = null;
+  state.interaction.connectSource = null;
+  state.interaction._isSelectionBox = false;
+  clearPreview();
+  clearGuides();
+  const canvas = getSvgCanvas();
+  if (canvas) canvas.classList.remove('panning');
+  _dragData = null;
+  _pointerDownPos = null;
 }
 
 function _isDrawingTool(tool) {

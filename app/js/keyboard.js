@@ -5,6 +5,7 @@ import { renderDocument, applyViewport } from './renderer.js';
 import { refreshSelection } from './selection.js';
 import { createGroup } from './shapes.js';
 import { getMultiSelectionBounds } from './geometry.js';
+import { copySelectedElements, pasteClipboardElements } from './clipboard.js';
 
 export function initKeyboard() {
   document.addEventListener('keydown', _onKeyDown);
@@ -125,8 +126,7 @@ function _onKeyUp(e) {
 }
 
 function _copy() {
-  const state = getState();
-  state.clipboard = getSelectedElements().map(e => JSON.parse(JSON.stringify(e)));
+  copySelectedElements();
 }
 
 function _cut() {
@@ -135,28 +135,7 @@ function _cut() {
 }
 
 function _paste() {
-  const state = getState();
-  if (state.clipboard.length === 0) return;
-  const before = snapshotElements();
-  const newIds = [];
-  for (const el of state.clipboard) {
-    const copy = JSON.parse(JSON.stringify(el));
-    copy.id = el.type === 'connector'
-      ? 'conn_' + crypto.randomUUID().slice(0, 12)
-      : 'el_' + crypto.randomUUID().slice(0, 12);
-    copy.x = (copy.x || 0) + 20;
-    copy.y = (copy.y || 0) + 20;
-    if (copy.points) {
-      copy.points = copy.points.map(p => ({ x: p.x + 20, y: p.y + 20 }));
-    }
-    addElement(copy);
-    newIds.push(copy.id);
-  }
-  setSelection(newIds);
-  const after = snapshotElements();
-  commitAction({ type: 'snapshot', before, after });
-  renderDocument(state.document);
-  refreshSelection();
+  pasteClipboardElements();
 }
 
 function _duplicate() {

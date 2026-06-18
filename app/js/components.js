@@ -62,6 +62,10 @@ function _baseText(overrides = {}) {
   return { value: '', fontFamily: 'Inter, Arial, sans-serif', fontSize: 14, fontWeight: 400, color: '#111827', align: 'center', verticalAlign: 'middle', ...overrides };
 }
 
+function _componentCss(className) {
+  return { className, rules: '' };
+}
+
 function _shapeEl(overrides) {
   return {
     id: _id(), type: 'shape', shape: 'rectangle',
@@ -91,7 +95,8 @@ function _createButton(x, y) {
   return {
     id: groupId, type: 'group', name: 'Button',
     x, y, width: 120, height: 40, rotation: 0,
-    children: [bgId], locked: false, visible: true, zIndex: getNextZIndex()
+    children: [bgId], css: _componentCss('gf-button'),
+    locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
 
@@ -109,7 +114,8 @@ function _createInput(x, y) {
   return {
     id: groupId, type: 'group', name: 'Input',
     x, y, width: 200, height: 36, rotation: 0,
-    children: [bgId], locked: false, visible: true, zIndex: getNextZIndex()
+    children: [bgId], css: _componentCss('gf-input'),
+    locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
 
@@ -127,7 +133,8 @@ function _createTextarea(x, y) {
   return {
     id: groupId, type: 'group', name: 'Textarea',
     x, y, width: 200, height: 80, rotation: 0,
-    children: [bgId], locked: false, visible: true, zIndex: getNextZIndex()
+    children: [bgId], css: _componentCss('gf-textarea'),
+    locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
 
@@ -151,7 +158,8 @@ function _createCheckbox(x, y) {
   return {
     id: groupId, type: 'group', name: 'Checkbox',
     x, y, width: 126, height: 22, rotation: 0,
-    children: [boxId, labelId], locked: false, visible: true, zIndex: getNextZIndex()
+    children: [boxId, labelId], css: _componentCss('gf-checkbox'),
+    locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
 
@@ -168,7 +176,8 @@ function _createToggle(x, y) {
   return {
     id: groupId, type: 'group', name: 'Toggle',
     x, y, width: 44, height: 24, rotation: 0,
-    children: [bgId], locked: false, visible: true, zIndex: getNextZIndex()
+    children: [bgId], css: _componentCss('gf-toggle'),
+    locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
 
@@ -192,7 +201,8 @@ function _createCard(x, y) {
   return {
     id: groupId, type: 'group', name: 'Card',
     x, y, width: 240, height: 160, rotation: 0,
-    children: [bgId, titleId], locked: false, visible: true, zIndex: getNextZIndex()
+    children: [bgId, titleId], css: _componentCss('gf-card'),
+    locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
 
@@ -210,7 +220,8 @@ function _createAvatar(x, y) {
   return {
     id: groupId, type: 'group', name: 'Avatar',
     x, y, width: 48, height: 48, rotation: 0,
-    children: [bgId], locked: false, visible: true, zIndex: getNextZIndex()
+    children: [bgId], css: _componentCss('gf-avatar'),
+    locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
 
@@ -228,7 +239,8 @@ function _createNavbar(x, y) {
   return {
     id: groupId, type: 'group', name: 'Navbar',
     x, y, width: 600, height: 48, rotation: 0,
-    children: [bgId], locked: false, visible: true, zIndex: getNextZIndex()
+    children: [bgId], css: _componentCss('gf-navbar'),
+    locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
 
@@ -246,7 +258,8 @@ function _createSidebar(x, y) {
   return {
     id: groupId, type: 'group', name: 'Sidebar',
     x, y, width: 200, height: 400, rotation: 0,
-    children: [bgId], locked: false, visible: true, zIndex: getNextZIndex()
+    children: [bgId], css: _componentCss('gf-sidebar'),
+    locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
 
@@ -270,7 +283,8 @@ function _createTable(x, y) {
   return {
     id: groupId, type: 'group', name: 'Table',
     x, y, width: 400, height: 200, rotation: 0,
-    children: [bgId, headerId], locked: false, visible: true, zIndex: getNextZIndex()
+    children: [bgId, headerId], css: _componentCss('gf-table'),
+    locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
 
@@ -288,7 +302,8 @@ function _createImage(x, y) {
   return {
     id: groupId, type: 'group', name: 'Image',
     x, y, width: 200, height: 150, rotation: 0,
-    children: [bgId], locked: false, visible: true, zIndex: getNextZIndex()
+    children: [bgId], css: _componentCss('gf-image'),
+    locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
 
@@ -312,7 +327,8 @@ function _createModal(x, y) {
   return {
     id: groupId, type: 'group', name: 'Modal',
     x, y, width: 360, height: 240, rotation: 0,
-    children: [bgId, titleId], locked: false, visible: true, zIndex: getNextZIndex()
+    children: [bgId, titleId], css: _componentCss('gf-modal'),
+    locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
 
