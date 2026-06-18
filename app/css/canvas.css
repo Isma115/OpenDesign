@@ -158,7 +158,8 @@
   font-family: inherit;
   resize: none;
   outline: none;
-  background: white;
+  background: var(--color-surface);
+  color: var(--color-text);
   box-sizing: border-box;
 }
 /* #endregion */

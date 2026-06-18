@@ -9,6 +9,11 @@ import { commitAction, snapshotElements } from './history.js';
 import { createConnectorElement, updateAllConnectorsForElement } from './connectors.js';
 
 let _dragData = null;
+let _lastClickTime = 0;
+let _lastClickPoint = null;
+let _pointerDownPos = null;
+const DBL_CLICK_THRESHOLD = 400;
+const DBL_CLICK_DISTANCE = 5;
 
 export function initTools() {
   const canvas = getSvgCanvas();
@@ -17,7 +22,6 @@ export function initTools() {
   canvas.addEventListener('pointerdown', _onPointerDown);
   canvas.addEventListener('pointermove', _onPointerMove);
   canvas.addEventListener('pointerup', _onPointerUp);
-  canvas.addEventListener('dblclick', _onDblClick);
   canvas.addEventListener('wheel', _onWheel, { passive: false });
 
   document.querySelectorAll('.tool-btn').forEach(btn => {
@@ -36,6 +40,7 @@ function _onPointerDown(e) {
   const canvas = getSvgCanvas();
   canvas.setPointerCapture(e.pointerId);
   const point = screenToCanvas(e.clientX, e.clientY, state.viewport);
+  _pointerDownPos = point;
 
   if (state.interaction.spaceHeld || state.activeTool === 'hand') {
     _startPan(e);
@@ -102,6 +107,28 @@ function _onPointerUp(e) {
   const canvas = getSvgCanvas();
   canvas.releasePointerCapture(e.pointerId);
 
+  const didMove = _pointerDownPos &&
+    (Math.abs(point.x - _pointerDownPos.x) > DBL_CLICK_DISTANCE ||
+     Math.abs(point.y - _pointerDownPos.y) > DBL_CLICK_DISTANCE);
+
+  if (!didMove) {
+    const now = Date.now();
+    const isDblClick = state.activeTool === 'select' &&
+      _lastClickPoint &&
+      Math.abs(point.x - _lastClickPoint.x) < DBL_CLICK_DISTANCE &&
+      Math.abs(point.y - _lastClickPoint.y) < DBL_CLICK_DISTANCE &&
+      (now - _lastClickTime) < DBL_CLICK_THRESHOLD;
+
+    _lastClickTime = now;
+    _lastClickPoint = point;
+
+    if (isDblClick) {
+      _handleDblClick(point);
+      _pointerDownPos = null;
+      return;
+    }
+  }
+
   if (state.interaction.isPanning) {
     _endPan(e);
     return;
@@ -131,12 +158,12 @@ function _onPointerUp(e) {
     _endConnect(point);
     return;
   }
+
+  _pointerDownPos = null;
 }
 
-function _onDblClick(e) {
+function _handleDblClick(point) {
   const state = getState();
-  if (state.activeTool !== 'select') return;
-  const point = screenToCanvas(e.clientX, e.clientY, state.viewport);
   const hitId = hitTest(point);
   if (!hitId) return;
   const el = getElementById(hitId);
@@ -247,6 +274,7 @@ function _endDrag(point) {
   const state = getState();
   state.interaction.isDragging = false;
   clearGuides();
+  _pointerDownPos = null;
   if (_dragData) {
     const after = snapshotElements();
     commitAction({ type: 'snapshot', before: _dragData.snapshot, after });
@@ -318,6 +346,7 @@ function _doResize(point) {
 function _endResize(point) {
   const state = getState();
   state.interaction.isResizing = false;
+  _pointerDownPos = null;
   if (_dragData) {
     const after = snapshotElements();
     commitAction({ type: 'snapshot', before: _dragData.snapshot, after });
@@ -362,6 +391,7 @@ function _doRotate(point) {
 function _endRotate(point) {
   const state = getState();
   state.interaction.isRotating = false;
+  _pointerDownPos = null;
   if (_dragData) {
     const after = snapshotElements();
     commitAction({ type: 'snapshot', before: _dragData.snapshot, after });
@@ -398,6 +428,7 @@ function _endConnect(point) {
   const state = getState();
   state.interaction.isConnecting = false;
   clearPreview();
+  _pointerDownPos = null;
   if (!state.interaction.connectSource) return;
 
   const cp = hitTestConnectionPoint(point);
@@ -496,6 +527,7 @@ function _endDraw(point) {
     _updateToolCursor();
   }
   _dragData = null;
+  _pointerDownPos = null;
 }
 
 function _startPan(e) {
@@ -524,6 +556,7 @@ function _endPan(e) {
   const canvas = getSvgCanvas();
   canvas.classList.remove('panning');
   _dragData = null;
+  _pointerDownPos = null;
 }
 
 function _startTextEdit(el) {
@@ -549,13 +582,17 @@ function _startTextEdit(el) {
   textarea.focus();
   textarea.select();
 
+  let cancelled = false;
+
   const finish = () => {
+    if (cancelled) return;
+    cancelled = true;
     const before = snapshotElements();
     const newValue = textarea.value;
     updateElement(el.id, { text: { ...el.text, value: newValue } });
     const after = snapshotElements();
     commitAction({ type: 'snapshot', before, after });
-    previewLayer.removeChild(fo);
+    if (fo.parentNode) previewLayer.removeChild(fo);
     renderDocument(getState().document);
     refreshSelection();
   };
@@ -563,8 +600,9 @@ function _startTextEdit(el) {
   textarea.addEventListener('blur', finish);
   textarea.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      cancelled = true;
       textarea.removeEventListener('blur', finish);
-      previewLayer.removeChild(fo);
+      if (fo.parentNode) previewLayer.removeChild(fo);
     }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
