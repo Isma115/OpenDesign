@@ -1,5 +1,6 @@
 // #region Renderizador SVG | Funcionalidad | renderizado de elementos en el lienzo SVG
 import { getElementBounds } from './geometry.js';
+import { getState, updateDocument } from './state.js';
 
 export const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -23,6 +24,11 @@ export function initRenderer() {
   _previewLayer = document.getElementById('preview-layer');
   _gridLayer = document.getElementById('grid-layer');
   _defs = document.getElementById('svg-defs');
+
+  window.addEventListener('resize', () => {
+    const state = getState();
+    ensureCanvasSize(state.viewport);
+  });
 }
 
 export function getSvgCanvas() {
@@ -50,6 +56,9 @@ export function renderDocument(docModel) {
       _renderShape(el);
     }
   }
+
+  const state = getState();
+  ensureCanvasSize(state.viewport);
 }
 
 export function renderElement(element) {
@@ -135,10 +144,57 @@ export function renderPreview(node) {
   if (node) _previewLayer.appendChild(node);
 }
 
+export function ensureCanvasSize(viewport) {
+  const wrapper = document.getElementById('canvas-wrapper');
+  if (!_svgCanvas || !wrapper) return;
+
+  const zoom = viewport.zoom;
+  const state = getState();
+
+  const screenPadding = 150;
+  const padding = Math.ceil(screenPadding / zoom);
+  const viewportW = Math.ceil(wrapper.clientWidth / zoom) + padding;
+  const viewportH = Math.ceil(wrapper.clientHeight / zoom) + padding;
+
+  let contentMaxW = 0;
+  let contentMaxH = 0;
+  for (const el of state.document.elements) {
+    if (el.type === 'connector' && el.points) {
+      for (const p of el.points) {
+        if (p.x > contentMaxW) contentMaxW = p.x;
+        if (p.y > contentMaxH) contentMaxH = p.y;
+      }
+    } else if (el.type !== 'connector') {
+      const right = (el.x || 0) + (el.width || 0);
+      const bottom = (el.y || 0) + (el.height || 0);
+      if (right > contentMaxW) contentMaxW = right;
+      if (bottom > contentMaxH) contentMaxH = bottom;
+    }
+  }
+  contentMaxW = Math.max(contentMaxW + padding, state.document.canvas.width);
+  contentMaxH = Math.max(contentMaxH + padding, state.document.canvas.height);
+
+  const newW = Math.max(viewportW, contentMaxW);
+  const newH = Math.max(viewportH, contentMaxH);
+
+  const currentW = parseInt(_svgCanvas.getAttribute('width')) || 1920;
+  const currentH = parseInt(_svgCanvas.getAttribute('height')) || 1080;
+
+  if (newW !== currentW || newH !== currentH) {
+    _svgCanvas.setAttribute('width', newW);
+    _svgCanvas.setAttribute('height', newH);
+    updateDocument(doc => {
+      doc.canvas.width = newW;
+      doc.canvas.height = newH;
+    });
+  }
+}
+
 export function applyViewport(viewport) {
   const container = document.getElementById('canvas-container');
   container.style.transform = `scale(${viewport.zoom})`;
   container.style.transformOrigin = '0 0';
+  ensureCanvasSize(viewport);
 }
 
 function _updateGrid(grid) {
