@@ -1,20 +1,26 @@
 // #region Utilidades geometricas | Funcionalidad | calculos de coordenadas y bounding boxes
 export function screenToCanvas(clientX, clientY, viewport) {
-  const canvas = document.getElementById('canvas');
-  const wrapper = document.getElementById('canvas-wrapper');
-  const rect = canvas.getBoundingClientRect();
-  const x = (clientX - rect.left) / viewport.zoom;
-  const y = (clientY - rect.top) / viewport.zoom;
-  return { x, y };
+  const svg = document.getElementById('canvas');
+  if (!svg) return { x: 0, y: 0 };
+  const pt = svg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return { x: 0, y: 0 };
+  const canvasPt = pt.matrixTransform(ctm.inverse());
+  return { x: canvasPt.x, y: canvasPt.y };
 }
 
 export function canvasToScreen(x, y, viewport) {
-  const canvas = document.getElementById('canvas');
-  const rect = canvas.getBoundingClientRect();
-  return {
-    x: rect.left + x * viewport.zoom,
-    y: rect.top + y * viewport.zoom
-  };
+  const svg = document.getElementById('canvas');
+  if (!svg) return { x: 0, y: 0 };
+  const pt = svg.createSVGPoint();
+  pt.x = x;
+  pt.y = y;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return { x: 0, y: 0 };
+  const screenPt = pt.matrixTransform(ctm);
+  return { x: screenPt.x, y: screenPt.y };
 }
 
 export function getElementBounds(element) {

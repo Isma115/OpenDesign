@@ -1,6 +1,7 @@
 // #region Renderizador SVG | Funcionalidad | renderizado de elementos en el lienzo SVG
 import { getElementBounds } from './geometry.js';
-import { getState, updateDocument } from './state.js';
+import { getState } from './state.js';
+import { getCssClassForElement, getSpecificCssForElement } from './css-template.js';
 
 export const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -27,7 +28,7 @@ export function initRenderer() {
 
   window.addEventListener('resize', () => {
     const state = getState();
-    ensureCanvasSize(state.viewport);
+    applyViewport(state.viewport);
   });
 }
 
@@ -36,10 +37,7 @@ export function getSvgCanvas() {
 }
 
 export function renderDocument(docModel) {
-  _svgCanvas.setAttribute('width', docModel.canvas.width);
-  _svgCanvas.setAttribute('height', docModel.canvas.height);
   _svgCanvas.style.background = docModel.canvas.background;
-  _updateGrid(docModel.canvas.grid);
 
   _shapeLayer.innerHTML = '';
   _connectorLayer.innerHTML = '';
@@ -53,12 +51,12 @@ export function renderDocument(docModel) {
     } else if (el.type === 'group') {
       _renderGroup(el, docModel);
     } else {
-      _renderShape(el);
+      _renderShape(el, docModel);
     }
   }
 
   const state = getState();
-  ensureCanvasSize(state.viewport);
+  applyViewport(state.viewport);
 }
 
 export function renderElement(element) {
@@ -70,7 +68,7 @@ export function renderElement(element) {
   } else if (element.type === 'group') {
     _renderGroup(element, null);
   } else {
-    _renderShape(element);
+    _renderShape(element, getState().document);
   }
 }
 
@@ -111,8 +109,9 @@ export function renderSelection(selectedIds, elements) {
 export function renderGuideLines(guides) {
   _guideLayer.innerHTML = '';
   if (!guides || guides.length === 0) return;
-  const canvasH = parseInt(_svgCanvas.getAttribute('height')) || 1080;
-  const canvasW = parseInt(_svgCanvas.getAttribute('width')) || 1920;
+  const vb = _svgCanvas.viewBox.baseVal;
+  const canvasW = vb.width || 1920;
+  const canvasH = vb.height || 1080;
   for (const guide of guides) {
     const line = document.createElementNS(SVG_NS, 'line');
     if (guide.type === 'vertical') {
@@ -144,60 +143,33 @@ export function renderPreview(node) {
   if (node) _previewLayer.appendChild(node);
 }
 
-export function ensureCanvasSize(viewport) {
+export function applyViewport(viewport) {
   const wrapper = document.getElementById('canvas-wrapper');
   if (!_svgCanvas || !wrapper) return;
 
-  const zoom = viewport.zoom;
   const state = getState();
+  const zoom = viewport.zoom;
+  const panX = viewport.panX || 0;
+  const panY = viewport.panY || 0;
 
-  const screenPadding = 150;
-  const padding = Math.ceil(screenPadding / zoom);
-  const viewportW = Math.ceil(wrapper.clientWidth / zoom) + padding;
-  const viewportH = Math.ceil(wrapper.clientHeight / zoom) + padding;
+  const displayW = wrapper.clientWidth;
+  const displayH = wrapper.clientHeight;
 
-  let contentMaxW = 0;
-  let contentMaxH = 0;
-  for (const el of state.document.elements) {
-    if (el.type === 'connector' && el.points) {
-      for (const p of el.points) {
-        if (p.x > contentMaxW) contentMaxW = p.x;
-        if (p.y > contentMaxH) contentMaxH = p.y;
-      }
-    } else if (el.type !== 'connector') {
-      const right = (el.x || 0) + (el.width || 0);
-      const bottom = (el.y || 0) + (el.height || 0);
-      if (right > contentMaxW) contentMaxW = right;
-      if (bottom > contentMaxH) contentMaxH = bottom;
-    }
-  }
-  contentMaxW = Math.max(contentMaxW + padding, state.document.canvas.width);
-  contentMaxH = Math.max(contentMaxH + padding, state.document.canvas.height);
+  const vpW = Math.ceil(displayW / zoom);
+  const vpH = Math.ceil(displayH / zoom);
 
-  const newW = Math.max(viewportW, contentMaxW);
-  const newH = Math.max(viewportH, contentMaxH);
+  _svgCanvas.setAttribute('width', displayW);
+  _svgCanvas.setAttribute('height', displayH);
+  _svgCanvas.setAttribute('viewBox', `${panX} ${panY} ${vpW} ${vpH}`);
+  _svgCanvas.setAttribute('overflow', 'visible');
 
-  const currentW = parseInt(_svgCanvas.getAttribute('width')) || 1920;
-  const currentH = parseInt(_svgCanvas.getAttribute('height')) || 1080;
-
-  if (newW !== currentW || newH !== currentH) {
-    _svgCanvas.setAttribute('width', newW);
-    _svgCanvas.setAttribute('height', newH);
-    updateDocument(doc => {
-      doc.canvas.width = newW;
-      doc.canvas.height = newH;
-    });
-  }
-}
-
-export function applyViewport(viewport) {
   const container = document.getElementById('canvas-container');
-  container.style.transform = `scale(${viewport.zoom})`;
-  container.style.transformOrigin = '0 0';
-  ensureCanvasSize(viewport);
+  container.style.transform = '';
+
+  _updateGrid(state.document.canvas.grid, panX, panY, vpW, vpH);
 }
 
-function _updateGrid(grid) {
+function _updateGrid(grid, panX, panY, vpW, vpH) {
   const bg = _svgCanvas.querySelector('.grid-bg');
   if (!bg) return;
   if (!grid || !grid.enabled) {
@@ -205,19 +177,34 @@ function _updateGrid(grid) {
     return;
   }
   bg.style.display = '';
+
+  bg.setAttribute('x', panX - vpW);
+  bg.setAttribute('y', panY - vpH);
+  bg.setAttribute('width', vpW * 3);
+  bg.setAttribute('height', vpH * 3);
+
+  const state = getState();
+  const zoom = state.viewport.zoom;
+  const minScreenSize = 24;
+  const adjustedSize = Math.max(grid.size, Math.ceil(minScreenSize / zoom));
+  const alignedSize = Math.ceil(adjustedSize / grid.size) * grid.size;
+  const minStrokeScreen = 0.5;
+  const strokeWidth = Math.max(0.5, minStrokeScreen / zoom);
+
   const smallPattern = _svgCanvas.querySelector('#grid-pattern');
   const largePattern = _svgCanvas.querySelector('#grid-pattern-large');
   if (smallPattern) {
-    smallPattern.setAttribute('width', grid.size);
-    smallPattern.setAttribute('height', grid.size);
+    smallPattern.setAttribute('width', alignedSize);
+    smallPattern.setAttribute('height', alignedSize);
     const path = smallPattern.querySelector('path');
     if (path) {
-      path.setAttribute('d', `M ${grid.size} 0 L 0 0 0 ${grid.size}`);
+      path.setAttribute('d', `M ${alignedSize} 0 L 0 0 0 ${alignedSize}`);
       path.setAttribute('stroke', grid.color || '#e5e7eb');
+      path.setAttribute('stroke-width', strokeWidth);
     }
   }
   if (largePattern) {
-    const largeSize = grid.size * 5;
+    const largeSize = alignedSize * 5;
     largePattern.setAttribute('width', largeSize);
     largePattern.setAttribute('height', largeSize);
     const smallRect = largePattern.querySelector('rect');
@@ -228,15 +215,19 @@ function _updateGrid(grid) {
     const path = largePattern.querySelector('path');
     if (path) {
       path.setAttribute('d', `M ${largeSize} 0 L 0 0 0 ${largeSize}`);
+      path.setAttribute('stroke-width', strokeWidth);
     }
   }
 }
 
-function _renderShape(element) {
+function _renderShape(element, docModel = null) {
   const g = document.createElementNS(SVG_NS, 'g');
   g.dataset.elementId = element.id;
   g.classList.add('element-shape');
   if (element.locked) g.classList.add('locked');
+  const cssOverrides = _getCanvasCssOverrides(element, docModel);
+  const visualStyle = { ...element.style, ...cssOverrides.style };
+  const textStyle = { ...element.text, ...cssOverrides.text };
 
   if (element.rotation) {
     const bounds = getElementBounds(element);
@@ -247,22 +238,21 @@ function _renderShape(element) {
 
   const shapeNode = _createShapeSVG(element);
   if (shapeNode) {
-    _applyStyle(shapeNode, element.style);
+    _applyStyle(shapeNode, visualStyle);
     shapeNode.dataset.elementId = element.id;
     g.appendChild(shapeNode);
   }
 
-  if (element.text && element.text.value) {
-    const textNode = _createTextSVG(element);
+  if (element.text && element.text.value && element.shape !== 'image') {
+    const textNode = _createTextSVG(element, textStyle);
     g.appendChild(textNode);
   }
 
-  if (element.type !== 'text' && element.shape !== 'frame') {
+  if (element.type !== 'text' && element.shape !== 'frame' && element.shape !== 'image') {
     _renderConnectionPoints(g, element);
   }
 
-  const targetLayer = element.type === 'text' ? _textLayer : _shapeLayer;
-  targetLayer.appendChild(g);
+  _shapeLayer.appendChild(g);
 }
 
 function _createShapeSVG(element) {
@@ -357,6 +347,16 @@ function _createShapeSVG(element) {
       rect.setAttribute('rx', 8);
       return rect;
     }
+    case 'image': {
+      const image = document.createElementNS(SVG_NS, 'image');
+      image.setAttribute('x', x);
+      image.setAttribute('y', y);
+      image.setAttribute('width', width);
+      image.setAttribute('height', height);
+      image.setAttributeNS('http://www.w3.org/1999/xlink', 'href', element.src || '');
+      image.setAttribute('preserveAspectRatio', 'none');
+      return image;
+    }
     case 'flow-io': {
       const offset = width * 0.15;
       const polygon = document.createElementNS(SVG_NS, 'polygon');
@@ -422,13 +422,13 @@ function _createShapeSVG(element) {
   }
 }
 
-function _createTextSVG(element) {
+function _createTextSVG(element, textStyle = element.text) {
   const bounds = getElementBounds(element);
   const text = document.createElementNS(SVG_NS, 'text');
   const padding = 8;
   let textX, textY, anchor, dy;
-  const align = element.text?.align || 'center';
-  const vAlign = element.text?.verticalAlign || 'middle';
+  const align = textStyle?.align || 'center';
+  const vAlign = textStyle?.verticalAlign || 'middle';
 
   if (align === 'left') {
     textX = bounds.x + padding;
@@ -442,7 +442,7 @@ function _createTextSVG(element) {
   }
 
   if (vAlign === 'top') {
-    textY = bounds.y + padding + (element.text?.fontSize || 16);
+    textY = bounds.y + padding + (textStyle?.fontSize || 16);
   } else if (vAlign === 'bottom') {
     textY = bounds.y + bounds.height - padding;
   } else {
@@ -453,10 +453,10 @@ function _createTextSVG(element) {
   text.setAttribute('x', textX);
   text.setAttribute('y', textY);
   text.setAttribute('text-anchor', anchor);
-  text.setAttribute('font-family', element.text?.fontFamily || 'Inter, Arial, sans-serif');
-  text.setAttribute('font-size', element.text?.fontSize || 16);
-  text.setAttribute('font-weight', element.text?.fontWeight || 400);
-  text.setAttribute('fill', element.text?.color || '#111827');
+  text.setAttribute('font-family', textStyle?.fontFamily || 'Inter, Arial, sans-serif');
+  text.setAttribute('font-size', textStyle?.fontSize || 16);
+  text.setAttribute('font-weight', textStyle?.fontWeight || 400);
+  text.setAttribute('fill', textStyle?.color || '#111827');
   if (dy) text.setAttribute('dy', dy);
   text.classList.add('text-element');
   text.textContent = _sanitizeText(element.text?.value || '');
@@ -541,7 +541,7 @@ function _renderConnector(connector) {
     });
   }
 
-  _connectorLayer.appendChild(g);
+  _shapeLayer.appendChild(g);
 }
 
 function _renderGroup(group, docModel) {
@@ -654,6 +654,114 @@ function _applyStyle(node, style) {
   if (style.strokeWidth != null) node.setAttribute('stroke-width', style.strokeWidth);
   if (style.opacity != null && style.opacity !== 1) node.setAttribute('opacity', style.opacity);
   if (style.dashArray) node.setAttribute('stroke-dasharray', style.dashArray);
+  if (style.borderRadius != null && node.tagName === 'rect') {
+    node.setAttribute('rx', style.borderRadius);
+    node.setAttribute('ry', style.borderRadius);
+  }
+}
+
+function _getCanvasCssOverrides(element, docModel) {
+  const doc = docModel || getState().document;
+  const inherited = _getInheritedComponentCss(element, doc);
+  const ownRules = getSpecificCssForElement(element, doc);
+  return _mergeCssOverrides(
+    _parseCanvasCssRules(inherited),
+    _parseCanvasCssRules(ownRules)
+  );
+}
+
+function _getInheritedComponentCss(element, docModel) {
+  if (!docModel || element.type === 'group') return '';
+  const group = (docModel.elements || []).find(candidate =>
+    candidate.type === 'group' && Array.isArray(candidate.children) && candidate.children.includes(element.id)
+  );
+  if (!group) return '';
+  return getSpecificCssForElement(group, docModel);
+}
+
+function _mergeCssOverrides(...items) {
+  return items.reduce((acc, item) => ({
+    style: { ...acc.style, ...item.style },
+    text: { ...acc.text, ...item.text }
+  }), { style: {}, text: {} });
+}
+
+function _parseCanvasCssRules(rules) {
+  const output = { style: {}, text: {} };
+  const body = _normalizeCssRuleBody(rules);
+  if (!body) return output;
+  for (const declaration of body.split(';')) {
+    const separator = declaration.indexOf(':');
+    if (separator === -1) continue;
+    const property = declaration.slice(0, separator).trim().toLowerCase();
+    const value = declaration.slice(separator + 1).trim();
+    if (!property || !value) continue;
+    _applyCanvasCssDeclaration(output, property, value);
+  }
+  return output;
+}
+
+function _applyCanvasCssDeclaration(output, property, value) {
+  switch (property) {
+    case 'background':
+    case 'background-color':
+    case 'fill':
+      output.style.fill = value;
+      break;
+    case 'border-color':
+    case 'stroke':
+      output.style.stroke = value;
+      break;
+    case 'border-width':
+    case 'stroke-width':
+      output.style.strokeWidth = _parseCssNumber(value);
+      break;
+    case 'border':
+      _applyBorderShorthand(output, value);
+      break;
+    case 'opacity':
+      output.style.opacity = _parseCssNumber(value);
+      break;
+    case 'border-radius':
+      output.style.borderRadius = _parseCssNumber(value);
+      break;
+    case 'color':
+      output.text.color = value;
+      break;
+    case 'font-family':
+      output.text.fontFamily = value;
+      break;
+    case 'font-size':
+      output.text.fontSize = _parseCssNumber(value);
+      break;
+    case 'font-weight':
+      output.text.fontWeight = /^\d+$/.test(value) ? parseInt(value, 10) : value;
+      break;
+    case 'text-align':
+      output.text.align = value;
+      break;
+  }
+}
+
+function _applyBorderShorthand(output, value) {
+  const width = value.match(/(\d+(?:\.\d+)?)px/);
+  if (width) output.style.strokeWidth = parseFloat(width[1]);
+  const color = value.match(/(#[0-9a-f]{3,8}\b|rgba?\([^)]+\)|hsla?\([^)]+\)|\b[a-z]+\b)$/i);
+  if (color) output.style.stroke = color[1];
+}
+
+function _parseCssNumber(value) {
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : value;
+}
+
+function _normalizeCssRuleBody(rules) {
+  const value = String(rules || '').trim();
+  if (!value.includes('{')) return value;
+  const openIndex = value.indexOf('{');
+  const closeIndex = value.lastIndexOf('}');
+  if (openIndex === -1 || closeIndex <= openIndex) return value;
+  return value.slice(openIndex + 1, closeIndex).trim();
 }
 
 function _regularPolygonPoints(x, y, width, height, sides) {

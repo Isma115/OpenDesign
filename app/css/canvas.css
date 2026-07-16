@@ -34,7 +34,7 @@
 #canvas.tool-zoom { cursor: zoom-in; }
 
 #canvas-wrapper {
-  overflow: auto;
+  overflow: hidden;
 }
 
 #canvas-container {

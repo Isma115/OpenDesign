@@ -1,6 +1,6 @@
 // #region Exportacion de archivos | Funcionalidad | exportar a JSON, HTML, SVG y PNG
 import { getState } from './state.js';
-import { buildCssBundle, getExportClassList, getExportLayoutStyle, validateVisualCss } from './css-template.js';
+import { buildCssBundle, getExportClassList, getExportLayoutStyle } from './css-template.js';
 
 export function exportAsJSON() {
   const state = getState();
@@ -142,10 +142,6 @@ export function exportAsPNG() {
 }
 
 function _buildHTMLDocument(doc) {
-  const cssIssues = validateVisualCss(doc.styles?.globalTemplateCss || '');
-  const warning = cssIssues.length
-    ? `\n  <!-- Advertencia: se omitieron propiedades de layout en la plantilla CSS global: ${cssIssues.map(issue => issue.property).join(', ')} -->`
-    : '';
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -157,7 +153,7 @@ ${_indentCss(_buildBaseExportCss(doc))}
   </style>
   <style>
 ${_indentCss(buildCssBundle(doc))}
-  </style>${warning}
+  </style>
 </head>
 <body>
   <main class="gf-page" aria-label="${_escapeAttribute(doc.name || 'Diseno exportado')}">
@@ -182,6 +178,13 @@ function _buildBaseExportCss(doc) {
 
 .gf-shape {
   border-style: solid;
+}
+
+.gf-shape img {
+  display: block;
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
 }
 
 .gf-text {
@@ -250,6 +253,11 @@ function _buildShapeElement(element) {
   const classes = `${getExportClassList(element)} ${element.type === 'text' ? 'gf-text' : 'gf-shape'}`;
   const style = getExportLayoutStyle(element);
   const text = element.text?.value || '';
+
+  if (element.shape === 'image' && element.src) {
+    return `    <img id="${_escapeAttribute(element.id)}" class="${_escapeAttribute(classes)}" style="${_escapeAttribute(style)}" src="${_escapeAttribute(element.src)}" alt="${_escapeAttribute(text || 'Imagen')}" />`;
+  }
+
   return `    <div id="${_escapeAttribute(element.id)}" class="${_escapeAttribute(classes)}" style="${_escapeAttribute(style)}">${_escapeHTML(text)}</div>`;
 }
 

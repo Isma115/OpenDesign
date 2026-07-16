@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 
 <head>
   <meta charset="UTF-8">
@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="css/themes.css">
 </head>
 
-<body>
+<body style="background-color: #000000; margin: 0; overflow: hidden;">
   <div id="app">
 
     <!-- #region Barra superior | Panel | menu principal y acciones rapidas -->
@@ -331,7 +331,6 @@
           <button class="panel-tab active" data-tab="properties" aria-label="Propiedades">Propiedades</button>
           <button class="panel-tab" data-tab="layers" aria-label="Capas">Capas</button>
           <button class="panel-tab" data-tab="components" aria-label="Componentes">Componentes</button>
-          <button class="panel-tab" data-tab="styles" aria-label="CSS">CSS</button>
         </div>
 
         <div id="panel-content">
@@ -463,16 +462,21 @@
 
               <h3 class="panel-title">CSS HTML</h3>
               <div class="prop-group">
-                <label>Clases globales</label>
-                <input type="text" id="prop-css-class" placeholder="gf-button">
+                <label>Nombre CSS especifico</label>
+                <input type="text" id="prop-css-class" list="component-css-names" placeholder="gf-button">
+                <datalist id="component-css-names"></datalist>
               </div>
               <div class="prop-group">
-                <label>CSS especifico</label>
+                <label>Reglas CSS compartidas</label>
                 <textarea id="prop-component-css" class="code-textarea" rows="7"
-                  placeholder=".gf-el-id {&#10;  background: #ffffff;&#10;}"></textarea>
+                  placeholder="background: #ffffff;&#10;border-radius: 8px;"></textarea>
               </div>
 
               <h3 class="panel-title">Organizar</h3>
+              <div class="prop-group">
+                <label>Capa</label>
+                <input type="number" id="prop-layer" step="1">
+              </div>
               <div class="prop-actions">
                 <button data-action="bring-front" aria-label="Traer al frente" title="Al frente">&#8676;</button>
                 <button data-action="bring-forward" aria-label="Adelantar" title="Adelantar">&#8593;</button>
@@ -519,6 +523,10 @@
                   <option value="5,5">Discontinua</option>
                   <option value="2,2">Puntos</option>
                 </select>
+              </div>
+              <div class="prop-group">
+                <label>Capa</label>
+                <input type="number" id="prop-conn-layer" step="1">
               </div>
               <h3 class="panel-title">Etiqueta</h3>
               <div class="prop-group">
@@ -585,29 +593,6 @@
             </div>
           </div>
 
-          <div id="tab-styles" class="tab-content" style="display:none">
-            <div class="panel-section">
-              <h3 class="panel-title">Plantilla CSS global</h3>
-              <div class="css-mode-tabs" role="tablist" aria-label="Modo de edicion CSS">
-                <button class="css-mode-tab active" data-css-mode="visual" type="button">Visual</button>
-                <button class="css-mode-tab" data-css-mode="code" type="button">Codigo</button>
-              </div>
-              <div id="css-visual-editor" class="css-mode-panel active">
-                <h4 class="css-group-title">Tokens base</h4>
-                <div class="css-visual-grid" data-css-visual-group="tokens"></div>
-                <h4 class="css-group-title">Componentes</h4>
-                <div class="css-visual-grid" data-css-visual-group="components"></div>
-              </div>
-              <div class="prop-group">
-                <div id="css-code-editor" class="css-code-editor css-mode-panel">
-                  <pre id="global-css-highlight" aria-hidden="true"></pre>
-                  <textarea id="prop-global-css-template" class="css-code-input" rows="24" spellcheck="false"
-                    aria-label="Codigo CSS de plantilla global"></textarea>
-                </div>
-              </div>
-              <div id="global-css-warning" class="css-warning" aria-live="polite"></div>
-            </div>
-          </div>
         </div>
       </aside>
       <!-- #endregion -->

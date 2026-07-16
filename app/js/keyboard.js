@@ -2,6 +2,7 @@
 import { getState, setActiveTool, setSelection, clearSelection, getSelectedElements, getElementById, addElement, removeElement } from './state.js';
 import { undo, redo, commitAction, snapshotElements } from './history.js';
 import { renderDocument, applyViewport } from './renderer.js';
+import { screenToCanvas } from './geometry.js';
 import { refreshSelection } from './selection.js';
 import { createGroup } from './shapes.js';
 import { getMultiSelectionBounds } from './geometry.js';
@@ -226,17 +227,55 @@ function _moveSelected(dx, dy) {
 
 function _zoomBy(delta) {
   const state = getState();
+  const wrapper = document.getElementById('canvas-wrapper');
+  if (!wrapper) { _setZoomRaw(state.viewport.zoom + delta); return; }
+  const wrapperRect = wrapper.getBoundingClientRect();
+
+  const centerX = wrapperRect.left + wrapperRect.width / 2;
+  const centerY = wrapperRect.top + wrapperRect.height / 2;
+
+  const centerCanvas = screenToCanvas(centerX, centerY, state.viewport);
+
   const newZoom = Math.min(5, Math.max(0.1, state.viewport.zoom + delta));
+
+  const newPanX = centerCanvas.x - (wrapperRect.width / 2) / newZoom;
+  const newPanY = centerCanvas.y - (wrapperRect.height / 2) / newZoom;
+
   state.viewport.zoom = newZoom;
+  state.viewport.panX = newPanX;
+  state.viewport.panY = newPanY;
   applyViewport(state.viewport);
   _updateZoomUI(newZoom);
 }
 
 function _setZoom(zoom) {
   const state = getState();
-  state.viewport.zoom = zoom;
+  const wrapper = document.getElementById('canvas-wrapper');
+  if (!wrapper) { _setZoomRaw(zoom); return; }
+  const wrapperRect = wrapper.getBoundingClientRect();
+
+  const centerX = wrapperRect.left + wrapperRect.width / 2;
+  const centerY = wrapperRect.top + wrapperRect.height / 2;
+
+  const centerCanvas = screenToCanvas(centerX, centerY, state.viewport);
+
+  const newZoom = Math.min(5, Math.max(0.1, zoom));
+
+  const newPanX = centerCanvas.x - (wrapperRect.width / 2) / newZoom;
+  const newPanY = centerCanvas.y - (wrapperRect.height / 2) / newZoom;
+
+  state.viewport.zoom = newZoom;
+  state.viewport.panX = newPanX;
+  state.viewport.panY = newPanY;
   applyViewport(state.viewport);
-  _updateZoomUI(zoom);
+  _updateZoomUI(newZoom);
+}
+
+function _setZoomRaw(zoom) {
+  const state = getState();
+  state.viewport.zoom = Math.min(5, Math.max(0.1, zoom));
+  applyViewport(state.viewport);
+  _updateZoomUI(state.viewport.zoom);
 }
 
 export function zoomBy(delta) { _zoomBy(delta); }

@@ -188,6 +188,18 @@ export function createText(x, y) {
   });
 }
 
+export function createImage(x, y, width, height, src) {
+  return _baseElement({
+    shape: 'image',
+    x, y,
+    width: Math.max(width, 40),
+    height: Math.max(height, 40),
+    style: { ...DEFAULT_STYLE, fill: 'none', stroke: 'none', strokeWidth: 0 },
+    src: src || '',
+    preserveAspectRatio: 'xMidYMid meet'
+  });
+}
+
 export function createNote(x, y) {
   const palette = getPalette();
   return _baseElement({
@@ -393,7 +405,8 @@ export function getShapeDisplayName(shape) {
     'flow-io': 'Entrada/Salida',
     'flow-database': 'Base de datos',
     'flow-document': 'Documento',
-    'flow-subprocess': 'Subproceso'
+    'flow-subprocess': 'Subproceso',
+    image: 'Imagen'
   };
   return names[shape] || shape;
 }

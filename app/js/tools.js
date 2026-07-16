@@ -177,25 +177,24 @@ function _onWheel(e) {
   e.preventDefault();
   const state = getState();
   const wrapper = document.getElementById('canvas-wrapper');
-  const container = document.getElementById('canvas-container');
-  const rect = container.getBoundingClientRect();
+  const wrapperRect = wrapper.getBoundingClientRect();
 
-  const mouseX = e.clientX - rect.left;
-  const mouseY = e.clientY - rect.top;
+  const mouseDisplayX = e.clientX - wrapperRect.left;
+  const mouseDisplayY = e.clientY - wrapperRect.top;
+
+  const mouseCanvas = screenToCanvas(e.clientX, e.clientY, state.viewport);
 
   const oldZoom = state.viewport.zoom;
   const delta = e.deltaY > 0 ? -0.08 : 0.08;
   const newZoom = Math.min(5, Math.max(0.1, oldZoom + delta));
 
   if (newZoom !== oldZoom) {
-    const scrollLeft = wrapper.scrollLeft;
-    const scrollTop = wrapper.scrollTop;
-
-    const zoomRatio = newZoom / oldZoom;
-    wrapper.scrollLeft = scrollLeft * zoomRatio + mouseX * (zoomRatio - 1);
-    wrapper.scrollTop = scrollTop * zoomRatio + mouseY * (zoomRatio - 1);
+    const newPanX = mouseCanvas.x - mouseDisplayX / newZoom;
+    const newPanY = mouseCanvas.y - mouseDisplayY / newZoom;
 
     state.viewport.zoom = newZoom;
+    state.viewport.panX = newPanX;
+    state.viewport.panY = newPanY;
     applyViewport(state.viewport);
     _updateZoomUI(newZoom);
   }
@@ -244,6 +243,7 @@ function _startDrag(point) {
       id: el.id,
       x: el.x || 0,
       y: el.y || 0,
+      lineData: el._lineData ? { ...el._lineData } : null,
       points: el.points ? el.points.map(p => ({ ...p })) : null
     }))
   };
@@ -264,6 +264,11 @@ function _doDrag(point) {
       const snapped = snapElement({ ...el, x: start.x, y: start.y }, dx, dy);
       el.x = snapped.x;
       el.y = snapped.y;
+      if (start.lineData) {
+        const snappedDx = snapped.x - start.x;
+        const snappedDy = snapped.y - start.y;
+        _translateLineData(el, start.lineData, snappedDx, snappedDy);
+      }
       renderGuideLines(snapped.guides);
     }
   }
@@ -300,7 +305,8 @@ function _startResize(point, handle) {
     startX: el.x,
     startY: el.y,
     startWidth: el.width,
-    startHeight: el.height
+    startHeight: el.height,
+    startLineData: el._lineData ? { ...el._lineData } : null
   };
 }
 
@@ -339,9 +345,32 @@ function _doResize(point) {
   el.y = newY;
   el.width = newW;
   el.height = newH;
+  if (_dragData.startLineData) {
+    _resizeLineData(el, _dragData.startLineData, _dragData.startX, _dragData.startY, _dragData.startWidth, _dragData.startHeight);
+  }
 
   renderDocument(state.document);
   refreshSelection();
+}
+
+function _translateLineData(element, startLineData, dx, dy) {
+  element._lineData = {
+    x1: startLineData.x1 + dx,
+    y1: startLineData.y1 + dy,
+    x2: startLineData.x2 + dx,
+    y2: startLineData.y2 + dy
+  };
+}
+
+function _resizeLineData(element, startLineData, startX, startY, startWidth, startHeight) {
+  const scaleX = startWidth ? element.width / startWidth : 1;
+  const scaleY = startHeight ? element.height / startHeight : 1;
+  element._lineData = {
+    x1: element.x + (startLineData.x1 - startX) * scaleX,
+    y1: element.y + (startLineData.y1 - startY) * scaleY,
+    x2: element.x + (startLineData.x2 - startX) * scaleX,
+    y2: element.y + (startLineData.y2 - startY) * scaleY
+  };
 }
 
 function _endResize(point) {
@@ -538,17 +567,19 @@ function _startPan(e) {
   const canvas = getSvgCanvas();
   canvas.classList.add('panning');
   _dragData = {
-    scrollLeft: document.getElementById('canvas-wrapper').scrollLeft,
-    scrollTop: document.getElementById('canvas-wrapper').scrollTop
+    panX: state.viewport.panX || 0,
+    panY: state.viewport.panY || 0
   };
 }
 
 function _doPan(e) {
-  const wrapper = document.getElementById('canvas-wrapper');
-  const dx = e.clientX - getState().interaction.dragStart.x;
-  const dy = e.clientY - getState().interaction.dragStart.y;
-  wrapper.scrollLeft = _dragData.scrollLeft - dx;
-  wrapper.scrollTop = _dragData.scrollTop - dy;
+  const state = getState();
+  const dx = e.clientX - state.interaction.dragStart.x;
+  const dy = e.clientY - state.interaction.dragStart.y;
+  const zoom = state.viewport.zoom;
+  state.viewport.panX = _dragData.panX - dx / zoom;
+  state.viewport.panY = _dragData.panY - dy / zoom;
+  applyViewport(state.viewport);
 }
 
 function _endPan(e) {

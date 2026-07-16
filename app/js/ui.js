@@ -5,27 +5,28 @@ import { refreshSelection } from './selection.js';
 import { commitAction, snapshotElements } from './history.js';
 import { downloadJSON, openJSON, handleFileImport, saveToLocal } from './storage.js';
 import { exportAsHTML, exportAsSVG, exportAsPNG } from './export.js';
-import { getShapeDisplayName, createGroup } from './shapes.js';
+import { getShapeDisplayName, createGroup, createImage } from './shapes.js';
 import { zoomBy, setZoom, updateToolUI } from './keyboard.js';
-import { getElementBounds, getMultiSelectionBounds } from './geometry.js';
+import { getElementBounds, getMultiSelectionBounds, screenToCanvas } from './geometry.js';
 import { updateConnectorPath, updateAllConnectorsForElement } from './connectors.js';
 import { createComponentGroup, getPendingChildren } from './components.js';
 import { toggleTheme } from './theme.js';
 import { copySelectedElements, pasteClipboardElements } from './clipboard.js';
 import {
-  CSS_TEMPLATE_VISUAL_FIELDS,
   getCssClassForElement,
-  getSpecificCssForElement,
-  getVisualCssValues,
-  updateVisualCssValue,
-  validateVisualCss
+  getSpecificCssForElement
 } from './css-template.js';
+
+let _rotationInputSnapshot = null;
+let _rotationInputElementId = null;
+let _specificCssInputSnapshot = null;
+let _elementPropertyInputSnapshot = null;
+let _elementPropertyInputKey = null;
 
 export function initUI() {
   _initMenuBars();
   _initPanelTabs();
   _initPropertyInputs();
-  _initCssTemplateEditor();
   _initTopbarActions();
   _initFileInput();
   _initComponentDrag();
@@ -76,55 +77,62 @@ function _initPanelTabs() {
 }
 
 function _initPropertyInputs() {
-  const bind = (id, handler) => {
+  const bind = (id, handler, options = {}) => {
     const el = document.getElementById(id);
     if (el) {
-      el.addEventListener('change', handler);
-      if (el.type === 'range' || el.type === 'color') {
-        el.addEventListener('input', handler);
+      el.addEventListener('change', () => handler(true));
+      if (options.live || el.type === 'range' || el.type === 'color') {
+        el.addEventListener('input', () => handler(false));
       }
     }
   };
 
-  bind('prop-x', () => _updatePropFromInput('x', parseFloat));
-  bind('prop-y', () => _updatePropFromInput('y', parseFloat));
-  bind('prop-w', () => _updatePropFromInput('width', v => Math.max(10, parseFloat(v))));
-  bind('prop-h', () => _updatePropFromInput('height', v => Math.max(10, parseFloat(v))));
-  bind('prop-rotation', () => {
-    const val = document.getElementById('prop-rotation').value;
-    const label = document.getElementById('prop-rotation-val');
-    if (label) label.innerHTML = val + '&deg;';
-    _updatePropFromInput('rotation', parseFloat);
-  });
-  bind('prop-fill', () => _updateStyleFromInput('fill', 'prop-fill'));
-  bind('prop-stroke', () => _updateStyleFromInput('stroke', 'prop-stroke'));
-  bind('prop-stroke-width', () => _updateStyleFromInput('strokeWidth', parseFloat));
-  bind('prop-opacity', () => {
+  bind('prop-x', (commit) => _updatePropFromInput('x', parseFloat, commit), { live: true });
+  bind('prop-y', (commit) => _updatePropFromInput('y', parseFloat, commit), { live: true });
+  bind('prop-w', (commit) => _updatePropFromInput('width', v => Math.max(10, parseFloat(v)), commit), { live: true });
+  bind('prop-h', (commit) => _updatePropFromInput('height', v => Math.max(10, parseFloat(v)), commit), { live: true });
+  bind('prop-layer', (commit) => _updateLayerFromInput('prop-layer', commit), { live: true });
+  const rotationInput = document.getElementById('prop-rotation');
+  if (rotationInput) {
+    rotationInput.addEventListener('input', () => _updateRotationFromInput(false));
+    rotationInput.addEventListener('change', () => _updateRotationFromInput(true));
+  }
+  bind('prop-fill', (commit) => _updateStyleFromInput('fill', 'prop-fill', commit), { live: true });
+  bind('prop-stroke', (commit) => _updateStyleFromInput('stroke', 'prop-stroke', commit), { live: true });
+  bind('prop-stroke-width', (commit) => _updateStyleFromInput('strokeWidth', 'prop-stroke-width', commit), { live: true });
+  bind('prop-opacity', (commit) => {
     const val = document.getElementById('prop-opacity').value;
     const label = document.getElementById('prop-opacity-val');
     if (label) label.textContent = Math.round(val * 100) + '%';
-    _updateStyleFromInput('opacity', parseFloat);
+    _updateStyleFromInput('opacity', 'prop-opacity', commit);
   });
-  bind('prop-dash', () => _updateStyleFromInput('dashArray', 'prop-dash'));
-  bind('prop-text', () => {
+  bind('prop-dash', (commit) => _updateStyleFromInput('dashArray', 'prop-dash', commit));
+  bind('prop-text', (commit) => {
     const state = getState();
     if (state.selectedElementIds.length !== 1) return;
     const el = getElementById(state.selectedElementIds[0]);
     if (!el) return;
-    const before = snapshotElements();
+    _beginElementPropertyInput(el.id, 'text.value');
     updateElement(el.id, { text: { ...el.text, value: document.getElementById('prop-text').value } });
-    const after = snapshotElements();
-    commitAction({ type: 'snapshot', before, after });
     renderDocument(state.document);
     refreshSelection();
-  });
-  bind('prop-font-family', () => _updateTextFromInput('fontFamily', 'prop-font-family'));
-  bind('prop-font-size', () => _updateTextFromInput('fontSize', parseFloat));
-  bind('prop-text-color', () => _updateTextFromInput('color', 'prop-text-color'));
-  bind('prop-text-align', () => _updateTextFromInput('align', 'prop-text-align'));
-  bind('prop-font-weight', () => _updateTextFromInput('fontWeight', v => parseInt(document.getElementById('prop-font-weight').value)));
-  bind('prop-css-class', () => _updateCssFromInput('className', 'prop-css-class'));
-  bind('prop-component-css', () => _updateCssFromInput('rules', 'prop-component-css'));
+    _commitElementPropertyInput(commit);
+  }, { live: true });
+  bind('prop-font-family', (commit) => _updateTextFromInput('fontFamily', 'prop-font-family', commit));
+  bind('prop-font-size', (commit) => _updateTextFromInput('fontSize', 'prop-font-size', commit), { live: true });
+  bind('prop-text-color', (commit) => _updateTextFromInput('color', 'prop-text-color', commit), { live: true });
+  bind('prop-text-align', (commit) => _updateTextFromInput('align', 'prop-text-align', commit));
+  bind('prop-font-weight', (commit) => _updateTextFromInput('fontWeight', 'prop-font-weight', commit));
+  const cssNameInput = document.getElementById('prop-css-class');
+  if (cssNameInput) {
+    cssNameInput.addEventListener('input', () => _updateSpecificCssNameFromInput(false));
+    cssNameInput.addEventListener('change', () => _updateSpecificCssNameFromInput(true));
+  }
+  const cssRulesInput = document.getElementById('prop-component-css');
+  if (cssRulesInput) {
+    cssRulesInput.addEventListener('input', () => _updateSpecificCssRulesFromInput(false));
+    cssRulesInput.addEventListener('change', () => _updateSpecificCssRulesFromInput(true));
+  }
 
   bind('prop-canvas-width', () => {
     const val = parseInt(document.getElementById('prop-canvas-width').value);
@@ -166,30 +174,28 @@ function _initPropertyInputs() {
     renderDocument(state.document);
     refreshSelection();
   });
-  bind('prop-conn-stroke', () => {
+  bind('prop-conn-stroke', (commit) => {
     const state = getState();
     if (state.selectedElementIds.length !== 1) return;
     const el = getElementById(state.selectedElementIds[0]);
     if (!el || el.type !== 'connector') return;
-    const before = snapshotElements();
+    _beginElementPropertyInput(el.id, 'connector.stroke');
     el.style.stroke = document.getElementById('prop-conn-stroke').value;
-    const after = snapshotElements();
-    commitAction({ type: 'snapshot', before, after });
     renderDocument(state.document);
     refreshSelection();
-  });
-  bind('prop-conn-stroke-width', () => {
+    _commitElementPropertyInput(commit);
+  }, { live: true });
+  bind('prop-conn-stroke-width', (commit) => {
     const state = getState();
     if (state.selectedElementIds.length !== 1) return;
     const el = getElementById(state.selectedElementIds[0]);
     if (!el || el.type !== 'connector') return;
-    const before = snapshotElements();
+    _beginElementPropertyInput(el.id, 'connector.strokeWidth');
     el.style.strokeWidth = parseFloat(document.getElementById('prop-conn-stroke-width').value);
-    const after = snapshotElements();
-    commitAction({ type: 'snapshot', before, after });
     renderDocument(state.document);
     refreshSelection();
-  });
+    _commitElementPropertyInput(commit);
+  }, { live: true });
   bind('prop-conn-end-marker', () => {
     const state = getState();
     if (state.selectedElementIds.length !== 1) return;
@@ -214,18 +220,18 @@ function _initPropertyInputs() {
     renderDocument(state.document);
     refreshSelection();
   });
-  bind('prop-conn-label', () => {
+  bind('prop-conn-layer', (commit) => _updateLayerFromInput('prop-conn-layer', commit), { live: true });
+  bind('prop-conn-label', (commit) => {
     const state = getState();
     if (state.selectedElementIds.length !== 1) return;
     const el = getElementById(state.selectedElementIds[0]);
     if (!el || el.type !== 'connector') return;
-    const before = snapshotElements();
+    _beginElementPropertyInput(el.id, 'connector.label');
     el.label.value = document.getElementById('prop-conn-label').value;
-    const after = snapshotElements();
-    commitAction({ type: 'snapshot', before, after });
     renderDocument(state.document);
     refreshSelection();
-  });
+    _commitElementPropertyInput(commit);
+  }, { live: true });
 
   document.querySelectorAll('.prop-actions button[data-action]').forEach(btn => {
     btn.addEventListener('click', () => _handleAction(btn.dataset.action));
@@ -270,17 +276,20 @@ function _initComponentDrag() {
   if (wrapper) {
     wrapper.addEventListener('dragover', (e) => {
       e.preventDefault();
-      e.dataTransfer.dropEffect = 'copy';
+      e.dataTransfer.dropEffect = e.dataTransfer.types.includes('Files') ? 'copy' : 'copy';
     });
     wrapper.addEventListener('drop', (e) => {
       e.preventDefault();
+      const files = e.dataTransfer.files;
+      if (files && files.length > 0) {
+        _handleFileDrop(files, e);
+        return;
+      }
       const compType = e.dataTransfer.getData('text/plain');
       if (!compType) return;
       const state = getState();
-      const rect = document.getElementById('canvas').getBoundingClientRect();
-      const x = (e.clientX - rect.left) / state.viewport.zoom;
-      const y = (e.clientY - rect.top) / state.viewport.zoom;
-      _dropComponent(compType, x, y);
+      const point = screenToCanvas(e.clientX, e.clientY, state.viewport);
+      _dropComponent(compType, point.x, point.y);
     });
   }
 }
@@ -294,20 +303,66 @@ function _initDocName() {
   }
 }
 
+const ACCEPTED_IMAGE_TYPES = [
+  'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp',
+  'image/svg+xml', 'image/bmp', 'image/tiff', 'image/avif'
+];
+
+function _handleFileDrop(files, e) {
+  const state = getState();
+  const point = screenToCanvas(e.clientX, e.clientY, state.viewport);
+
+  for (const file of files) {
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) continue;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const img = new Image();
+      img.onload = () => {
+        let w = img.naturalWidth;
+        let h = img.naturalHeight;
+        const maxDim = 600;
+        if (w > maxDim || h > maxDim) {
+          const scale = maxDim / Math.max(w, h);
+          w = Math.round(w * scale);
+          h = Math.round(h * scale);
+        }
+        const before = snapshotElements();
+        const el = createImage(point.x - w / 2, point.y - h / 2, w, h, dataUrl);
+        addElement(el);
+        setSelection([el.id]);
+        const after = snapshotElements();
+        commitAction({ type: 'snapshot', before, after });
+        renderDocument(getState().document);
+        refreshSelection();
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
 function _handleAction(action) {
   const state = getState();
   switch (action) {
     case 'new':
-      if (confirm('Crear nuevo proyecto? Se perderan cambios no guardados.')) {
-        resetDocument();
-        renderDocument(getState().document);
-        refreshSelection();
-        const nameInput = document.getElementById('doc-name');
-        if (nameInput) nameInput.value = 'Nuevo diseno';
-      }
+      if (state.dirty && !confirm('Hay cambios sin guardar. Crear nuevo proyecto?')) break;
+      resetDocument();
+      renderDocument(getState().document);
+      refreshSelection();
+      const nameInputNew = document.getElementById('doc-name');
+      if (nameInputNew) nameInputNew.value = 'Nuevo diseno';
       break;
-    case 'open': openJSON(); break;
-    case 'save': saveToLocal(); _updateStatusSaved(); break;
+    case 'open':
+      if (state.dirty && !confirm('Hay cambios sin guardar. Abrir otro proyecto?')) break;
+      openJSON();
+      break;
+    case 'save':
+      if (!state.dirty) break;
+      if (!confirm('Guardar cambios?')) break;
+      saveToLocal();
+      _updateStatusSaved();
+      break;
     case 'download-json': downloadJSON(); break;
     case 'export-html': exportAsHTML(); break;
     case 'export-svg': exportAsSVG(); break;
@@ -381,7 +436,7 @@ function _handleDelete() {
   refreshSelection();
 }
 
-function _updatePropFromInput(prop, parser) {
+function _updatePropFromInput(prop, parser, commit = true) {
   const state = getState();
   if (state.selectedElementIds.length !== 1) return;
   const el = getElementById(state.selectedElementIds[0]);
@@ -391,16 +446,54 @@ function _updatePropFromInput(prop, parser) {
   if (!input) return;
   const val = parser(input.value);
   if (isNaN(val)) return;
-  const before = snapshotElements();
+  _beginElementPropertyInput(el.id, prop);
   updateElement(el.id, { [prop]: val });
-  const after = snapshotElements();
-  commitAction({ type: 'snapshot', before, after });
   renderDocument(state.document);
   refreshSelection();
   updateAllConns(el.id);
+  _commitElementPropertyInput(commit);
 }
 
-function _updateStyleFromInput(prop, inputId) {
+function _updateRotationFromInput(commit) {
+  const state = getState();
+  if (state.selectedElementIds.length !== 1) return;
+  const el = getElementById(state.selectedElementIds[0]);
+  if (!el) return;
+  const input = document.getElementById('prop-rotation');
+  if (!input) return;
+  const val = parseFloat(input.value);
+  if (isNaN(val)) return;
+
+  const label = document.getElementById('prop-rotation-val');
+  if (label) label.innerHTML = val + '&deg;';
+
+  if (!_rotationInputSnapshot || _rotationInputElementId !== el.id) {
+    _rotationInputSnapshot = snapshotElements();
+    _rotationInputElementId = el.id;
+  }
+
+  updateElement(el.id, { rotation: val });
+  renderDocument(state.document);
+  refreshSelection();
+  updateAllConns(el.id);
+
+  if (!commit) return;
+
+  const before = _rotationInputSnapshot;
+  const after = snapshotElements();
+  _rotationInputSnapshot = null;
+  _rotationInputElementId = null;
+
+  if (!_snapshotsEqual(before, after)) {
+    commitAction({ type: 'snapshot', before, after });
+  }
+}
+
+function _snapshotsEqual(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function _updateStyleFromInput(prop, inputId, commit = true) {
   const state = getState();
   if (state.selectedElementIds.length !== 1) return;
   const el = getElementById(state.selectedElementIds[0]);
@@ -410,28 +503,64 @@ function _updateStyleFromInput(prop, inputId) {
   const val = typeof input.value === 'string' && input.type !== 'range' && input.type !== 'number'
     ? input.value
     : parseFloat(input.value);
-  const before = snapshotElements();
+  _beginElementPropertyInput(el.id, `style.${prop}`);
   updateElement(el.id, { style: { ...el.style, [prop]: val } });
-  const after = snapshotElements();
-  commitAction({ type: 'snapshot', before, after });
+  _updateGroupSurfaceStyle(el, prop, val);
   renderDocument(state.document);
   refreshSelection();
+  _commitElementPropertyInput(commit);
 }
 
-function _updateTextFromInput(prop, inputIdOrParser) {
+function _updateTextFromInput(prop, inputId, commit = true) {
   const state = getState();
   if (state.selectedElementIds.length !== 1) return;
   const el = getElementById(state.selectedElementIds[0]);
   if (!el) return;
-  const input = document.getElementById(inputIdOrParser);
+  const input = document.getElementById(inputId);
   if (!input) return;
-  const val = input.value;
-  const before = snapshotElements();
-  updateElement(el.id, { text: { ...el.text, [prop]: isNaN(parseFloat(val)) ? val : parseFloat(val) } });
-  const after = snapshotElements();
-  commitAction({ type: 'snapshot', before, after });
+  const numericTextProps = new Set(['fontSize', 'fontWeight']);
+  const val = numericTextProps.has(prop) ? parseFloat(input.value) : input.value;
+  if (numericTextProps.has(prop) && isNaN(val)) return;
+  _beginElementPropertyInput(el.id, `text.${prop}`);
+  updateElement(el.id, { text: { ...el.text, [prop]: val } });
   renderDocument(state.document);
   refreshSelection();
+  _commitElementPropertyInput(commit);
+}
+
+function _updateLayerFromInput(inputId, commit = true) {
+  const state = getState();
+  if (state.selectedElementIds.length !== 1) return;
+  const el = getElementById(state.selectedElementIds[0]);
+  if (!el) return;
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const layer = parseInt(input.value, 10);
+  if (isNaN(layer)) return;
+  _beginElementPropertyInput(el.id, 'zIndex');
+  _setElementLayer(el, layer);
+  renderDocument(state.document);
+  refreshSelection();
+  _updateLayersPanel();
+  _commitElementPropertyInput(commit);
+}
+
+function _beginElementPropertyInput(elementId, prop) {
+  const key = `${elementId}:${prop}`;
+  if (_elementPropertyInputSnapshot && _elementPropertyInputKey === key) return;
+  _elementPropertyInputSnapshot = snapshotElements();
+  _elementPropertyInputKey = key;
+}
+
+function _commitElementPropertyInput(commit) {
+  if (!commit || !_elementPropertyInputSnapshot) return;
+  const before = _elementPropertyInputSnapshot;
+  const after = snapshotElements();
+  _elementPropertyInputSnapshot = null;
+  _elementPropertyInputKey = null;
+  if (!_snapshotsEqual(before, after)) {
+    commitAction({ type: 'snapshot', before, after });
+  }
 }
 
 function updateAllConns(elementId) {
@@ -449,7 +578,6 @@ function _updatePropertiesPanel() {
   if (propShape) propShape.style.display = 'none';
   if (propConnector) propConnector.style.display = 'none';
   if (propEmpty) propEmpty.style.display = 'none';
-  _fillGlobalStylesPanel();
 
   if (state.selectedElementIds.length === 0) {
     if (propCanvas) propCanvas.style.display = 'block';
@@ -486,17 +614,19 @@ function _fillShapeProps(el) {
   _setVal('prop-y', Math.round(el.y || 0));
   _setVal('prop-w', Math.round(el.width || 0));
   _setVal('prop-h', Math.round(el.height || 0));
+  _setVal('prop-layer', el.zIndex || 0);
   _setVal('prop-rotation', el.rotation || 0);
   const rotLabel = document.getElementById('prop-rotation-val');
   if (rotLabel) rotLabel.innerHTML = (el.rotation || 0) + '&deg;';
-  if (el.style) {
-    _setVal('prop-fill', el.style.fill || '#ffffff');
-    _setVal('prop-stroke', el.style.stroke || '#111827');
-    _setVal('prop-stroke-width', el.style.strokeWidth || 2);
-    _setVal('prop-opacity', el.style.opacity != null ? el.style.opacity : 1);
+  const visualStyle = el.style || _getGroupSurfaceStyle(el);
+  if (visualStyle) {
+    _setVal('prop-fill', visualStyle.fill || '#ffffff');
+    _setVal('prop-stroke', visualStyle.stroke || '#111827');
+    _setVal('prop-stroke-width', visualStyle.strokeWidth || 2);
+    _setVal('prop-opacity', visualStyle.opacity != null ? visualStyle.opacity : 1);
     const opLabel = document.getElementById('prop-opacity-val');
-    if (opLabel) opLabel.textContent = Math.round((el.style.opacity || 1) * 100) + '%';
-    _setVal('prop-dash', el.style.dashArray || '');
+    if (opLabel) opLabel.textContent = Math.round((visualStyle.opacity || 1) * 100) + '%';
+    _setVal('prop-dash', visualStyle.dashArray || '');
   }
   if (el.text) {
     _setVal('prop-text', el.text.value || '');
@@ -506,24 +636,47 @@ function _fillShapeProps(el) {
     _setVal('prop-text-align', el.text.align || 'center');
     _setVal('prop-font-weight', el.text.fontWeight || 400);
   }
+  _fillSpecificCssNameOptions();
   _setVal('prop-css-class', getCssClassForElement(el));
-  _setVal('prop-component-css', getSpecificCssForElement(el));
+  _setVal('prop-component-css', getSpecificCssForElement(el, getState().document));
   const lockBtn = document.getElementById('btn-lock');
   if (lockBtn) lockBtn.textContent = el.locked ? '\uD83D\uDD12' : '\uD83D\uDD13';
 }
 
-function _fillGlobalStylesPanel() {
+function _getGroupSurfaceStyle(group) {
+  const surface = _getGroupSurfaceElements(group)[0];
+  return surface?.style || null;
+}
+
+function _updateGroupSurfaceStyle(group, prop, value) {
+  if (group.type !== 'group') return;
+  for (const child of _getGroupSurfaceElements(group)) {
+    updateElement(child.id, { style: { ...child.style, [prop]: value } });
+  }
+}
+
+function _getGroupSurfaceElements(group) {
+  if (group.type !== 'group' || !Array.isArray(group.children)) return [];
+  return group.children
+    .map(id => getElementById(id))
+    .filter(child => child?.style && child.type !== 'text' && child.style.fill !== 'none');
+}
+
+function _fillSpecificCssNameOptions() {
   const state = getState();
-  const css = state.document.styles?.globalTemplateCss || '';
-  const input = document.getElementById('prop-global-css-template');
-  if (input && input.value !== css) input.value = css;
-  _syncCssCodeHighlight(css);
-  _syncVisualCssFields(css);
-  _renderGlobalCssWarnings(css);
+  const list = document.getElementById('component-css-names');
+  if (!list) return;
+  const names = new Set(Object.keys(state.document.styles?.componentCss || {}));
+  for (const element of state.document.elements || []) {
+    const name = getCssClassForElement(element);
+    if (name) names.add(name);
+  }
+  list.innerHTML = [...names].sort().map(name => `<option value="${_escapeAttribute(name)}"></option>`).join('');
 }
 
 function _fillConnectorProps(el) {
   _setVal('prop-connector-type', el.connectorType || 'orthogonal');
+  _setVal('prop-conn-layer', el.zIndex || 0);
   if (el.style) {
     _setVal('prop-conn-stroke', el.style.stroke || '#111827');
     _setVal('prop-conn-stroke-width', el.style.strokeWidth || 2);
@@ -537,143 +690,150 @@ function _fillConnectorProps(el) {
 
 function _setVal(id, val) {
   const el = document.getElementById(id);
-  if (el) el.value = val;
-}
-
-function _bindLiveInput(id, handler) {
-  const el = document.getElementById(id);
   if (!el) return;
-  el.addEventListener('input', handler);
-  el.addEventListener('change', handler);
+  const nextValue = String(val ?? '');
+  if (el.value === nextValue) return;
+  if (document.activeElement === el) return;
+  el.value = nextValue;
 }
 
-function _initCssTemplateEditor() {
-  _buildVisualCssEditor();
-  _bindLiveInput('prop-global-css-template', _updateGlobalCssTemplate);
-
-  const textarea = document.getElementById('prop-global-css-template');
-  const highlight = document.getElementById('global-css-highlight');
-  if (textarea && highlight) {
-    textarea.addEventListener('scroll', () => {
-      highlight.scrollTop = textarea.scrollTop;
-      highlight.scrollLeft = textarea.scrollLeft;
-    });
-  }
-
-  document.querySelectorAll('.css-mode-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.css-mode-tab').forEach(item => item.classList.remove('active'));
-      document.querySelectorAll('#tab-styles .css-mode-panel').forEach(panel => panel.classList.remove('active'));
-      btn.classList.add('active');
-      const panel = document.getElementById(btn.dataset.cssMode === 'code' ? 'css-code-editor' : 'css-visual-editor');
-      if (panel) panel.classList.add('active');
-    });
-  });
-}
-
-function _buildVisualCssEditor() {
-  const tokenGrid = document.querySelector('[data-css-visual-group="tokens"]');
-  const componentGrid = document.querySelector('[data-css-visual-group="components"]');
-  if (!tokenGrid || !componentGrid) return;
-  tokenGrid.innerHTML = '';
-  componentGrid.innerHTML = '';
-
-  for (const field of CSS_TEMPLATE_VISUAL_FIELDS) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'css-visual-field';
-    const inputType = field.type === 'color' ? 'color' : 'text';
-    wrapper.innerHTML = `
-      <label for="css-visual-${field.id}">${field.label}</label>
-      <input id="css-visual-${field.id}" type="${inputType}" data-css-field="${field.id}" spellcheck="false">
-    `;
-    const input = wrapper.querySelector('input');
-    input.addEventListener('input', () => _updateVisualCssField(field.id, input.value));
-    const target = field.selector === ':root' ? tokenGrid : componentGrid;
-    target.appendChild(wrapper);
-  }
-}
-
-function _updateGlobalCssTemplate() {
-  const input = document.getElementById('prop-global-css-template');
-  if (!input) return;
-  updateDocument(doc => {
-    if (!doc.styles) doc.styles = {};
-    doc.styles.globalTemplateCss = input.value;
-  });
-  _syncCssCodeHighlight(input.value);
-  _syncVisualCssFields(input.value);
-  _renderGlobalCssWarnings(input.value);
-}
-
-function _updateVisualCssField(fieldId, value) {
-  const state = getState();
-  const currentCss = state.document.styles?.globalTemplateCss || '';
-  const nextCss = updateVisualCssValue(currentCss, fieldId, value);
-  updateDocument(doc => {
-    if (!doc.styles) doc.styles = {};
-    doc.styles.globalTemplateCss = nextCss;
-  });
-  const input = document.getElementById('prop-global-css-template');
-  if (input) input.value = nextCss;
-  _syncCssCodeHighlight(nextCss);
-  _renderGlobalCssWarnings(nextCss);
-}
-
-function _syncVisualCssFields(cssText) {
-  const values = getVisualCssValues(cssText);
-  for (const field of CSS_TEMPLATE_VISUAL_FIELDS) {
-    const input = document.querySelector(`[data-css-field="${field.id}"]`);
-    if (!input) continue;
-    const value = values[field.id] || field.fallback;
-    if (input.type === 'color' && !/^#[0-9a-f]{6}$/i.test(value)) continue;
-    if (input.value !== value) input.value = value;
-  }
-}
-
-function _syncCssCodeHighlight(cssText) {
-  const highlight = document.getElementById('global-css-highlight');
-  if (!highlight) return;
-  highlight.innerHTML = _highlightCss(cssText);
-}
-
-function _highlightCss(cssText) {
-  const escaped = _escapeForHTML(cssText || '');
-  return escaped
-    .replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="css-code-token-comment">$1</span>')
-    .replace(/(^|\n)([^{}\n]+)(\s*\{)/g, (full, lineStart, selector, brace) => {
-      return `${lineStart}<span class="css-code-token-selector">${selector}</span><span class="css-code-token-punctuation">${brace}</span>`;
-    })
-    .replace(/([\w-]+)(\s*:)(\s*)([^;\n}]+)(;?)/g, (full, property, colon, space, value, semicolon) => {
-      return `<span class="css-code-token-property">${property}</span><span class="css-code-token-punctuation">${colon}</span>${space}<span class="css-code-token-value">${value}</span><span class="css-code-token-punctuation">${semicolon}</span>`;
-    })
-    .replace(/([{}])/g, '<span class="css-code-token-punctuation">$1</span>');
-}
-
-function _escapeForHTML(value) {
-  const div = document.createElement('div');
-  div.textContent = String(value ?? '');
-  return div.innerHTML;
-}
-
-function _updateCssFromInput(prop, inputId) {
+function _updateSpecificCssNameFromInput(commit) {
   const state = getState();
   if (state.selectedElementIds.length !== 1) return;
   const el = getElementById(state.selectedElementIds[0]);
-  const input = document.getElementById(inputId);
+  const input = document.getElementById('prop-css-class');
   if (!el || !input) return;
-  const before = snapshotElements();
-  updateElement(el.id, { css: { ...el.css, [prop]: input.value } });
-  const after = snapshotElements();
-  commitAction({ type: 'snapshot', before, after });
+  const nextName = input.value.trim();
+  const currentRules = _getCurrentSpecificCssRules(el);
+  _beginSpecificCssInput();
+  updateElement(el.id, { css: { ...el.css, className: nextName } });
+  _ensureComponentCssRegistry();
+  if (nextName && currentRules && !state.document.styles.componentCss[nextName]) {
+    state.document.styles.componentCss[nextName] = currentRules;
+  }
+  const nextRules = nextName && state.document.styles.componentCss[nextName]
+    ? state.document.styles.componentCss[nextName]
+    : currentRules;
+  updateElement(el.id, { css: { ...el.css, rules: nextRules } });
+  _fillSpecificCssNameOptions();
+  _setVal('prop-component-css', nextRules);
+  renderDocument(state.document);
+  refreshSelection();
+  _commitSpecificCssInput(commit);
 }
 
-function _renderGlobalCssWarnings(cssText) {
-  const warning = document.getElementById('global-css-warning');
-  if (!warning) return;
-  const issues = validateVisualCss(cssText);
-  warning.textContent = issues.length
-    ? `No se exportaran estas propiedades de layout en la plantilla global: ${[...new Set(issues.map(issue => issue.property))].join(', ')}.`
-    : '';
+function _updateSpecificCssRulesFromInput(commit) {
+  const state = getState();
+  if (state.selectedElementIds.length !== 1) return;
+  const el = getElementById(state.selectedElementIds[0]);
+  const input = document.getElementById('prop-component-css');
+  if (!el || !input) return;
+  const cssName = getCssClassForElement(el);
+  const rules = _normalizeSpecificCssRulesInput(input.value);
+  if (input.value !== rules) input.value = rules;
+  _beginSpecificCssInput();
+  _ensureComponentCssRegistry();
+  if (cssName) {
+    state.document.styles.componentCss[cssName] = rules;
+    updateDocument(doc => {
+      for (const target of doc.elements || []) {
+        if (getCssClassForElement(target) === cssName) {
+          target.css = { ...target.css, rules };
+        }
+      }
+    });
+  } else {
+    updateElement(el.id, { css: { ...el.css, rules } });
+  }
+  _fillSpecificCssNameOptions();
+  renderDocument(state.document);
+  refreshSelection();
+  _commitSpecificCssInput(commit);
+}
+
+function _getCurrentSpecificCssRules(element) {
+  return getSpecificCssForElement(element, getState().document);
+}
+
+function _normalizeSpecificCssRulesInput(rules) {
+  const value = String(rules || '').trim();
+  if (!value.includes('{')) return value;
+  const openIndex = value.indexOf('{');
+  const closeIndex = value.lastIndexOf('}');
+  if (openIndex === -1 || closeIndex <= openIndex) return value;
+  return value.slice(openIndex + 1, closeIndex).trim();
+}
+
+function _ensureComponentCssRegistry() {
+  const state = getState();
+  if (!state.document.styles || typeof state.document.styles !== 'object') {
+    state.document.styles = {};
+  }
+  if (!state.document.styles.componentCss || typeof state.document.styles.componentCss !== 'object') {
+    state.document.styles.componentCss = {};
+  }
+}
+
+function _beginSpecificCssInput() {
+  if (!_specificCssInputSnapshot) {
+    _specificCssInputSnapshot = snapshotElements();
+  }
+}
+
+function _commitSpecificCssInput(commit) {
+  if (!commit || !_specificCssInputSnapshot) return;
+  const before = _specificCssInputSnapshot;
+  const after = snapshotElements();
+  _specificCssInputSnapshot = null;
+  if (!_snapshotsEqual(before, after)) {
+    commitAction({ type: 'snapshot', before, after });
+  }
+}
+
+function _escapeAttribute(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function _getLayerIconSvg(element) {
+  const svg = (content) => `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${content}</svg>`;
+  const strokeShape = (content) => svg(`<g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">${content}</g>`);
+
+  if (element.type === 'connector') {
+    return strokeShape('<path d="M4 12h14" /><path d="M14 7l5 5-5 5" />');
+  }
+  if (element.type === 'group') {
+    return strokeShape('<rect x="4" y="5" width="16" height="14" rx="2" stroke-dasharray="3 2" />');
+  }
+
+  const icons = {
+    rectangle: strokeShape('<rect x="4" y="6" width="16" height="12" rx="1" />'),
+    roundedRectangle: strokeShape('<rect x="4" y="6" width="16" height="12" rx="4" />'),
+    ellipse: strokeShape('<ellipse cx="12" cy="12" rx="8" ry="6" />'),
+    triangle: strokeShape('<polygon points="12,4 21,20 3,20" />'),
+    diamond: strokeShape('<polygon points="12,3 21,12 12,21 3,12" />'),
+    pentagon: strokeShape('<polygon points="12,3 21,10 18,21 6,21 3,10" />'),
+    hexagon: strokeShape('<polygon points="12,3 20,8 20,16 12,21 4,16 4,8" />'),
+    star: strokeShape('<polygon points="12,3 14.6,8.7 21,9.2 16.2,13.5 17.6,20 12,16.7 6.4,20 7.8,13.5 3,9.2 9.4,8.7" />'),
+    line: strokeShape('<path d="M5 19L19 5" />'),
+    arrow: strokeShape('<path d="M5 19L18 6" /><path d="M12 6h6v6" />'),
+    text: svg('<text x="6" y="17" fill="currentColor" font-size="14" font-weight="700" font-family="Inter, Arial, sans-serif">T</text>'),
+    note: strokeShape('<path d="M5 4h11l3 3v13H5z" /><path d="M16 4v4h4" />'),
+    frame: strokeShape('<rect x="4" y="5" width="16" height="14" rx="2" stroke-dasharray="4 2" />'),
+    image: strokeShape('<rect x="4" y="5" width="16" height="14" rx="2" /><path d="M7 16l4-4 3 3 2-2 2 3" /><circle cx="9" cy="9" r="1" />'),
+    'flow-start': strokeShape('<rect x="4" y="7" width="16" height="10" rx="5" />'),
+    'flow-process': strokeShape('<rect x="4" y="6" width="16" height="12" />'),
+    'flow-decision': strokeShape('<polygon points="12,3 21,12 12,21 3,12" />'),
+    'flow-io': strokeShape('<polygon points="7,5 21,5 17,19 3,19" />'),
+    'flow-database': strokeShape('<path d="M5 8c0-2 14-2 14 0v8c0 2-14 2-14 0z" /><path d="M5 8c0 2 14 2 14 0" />'),
+    'flow-document': strokeShape('<path d="M5 4h14v13c-4-2-6 2-10 0-1.3-.7-2.6-.9-4-.3z" />'),
+    'flow-subprocess': strokeShape('<rect x="4" y="6" width="16" height="12" /><path d="M8 6v12M16 6v12" />')
+  };
+
+  return icons[element.shape] || icons.rectangle;
 }
 
 function _updateLayersPanel() {
@@ -690,8 +850,8 @@ function _updateLayersPanel() {
       : el.type === 'group' ? (el.name || 'Grupo')
       : getShapeDisplayName(el.shape);
     item.innerHTML = `
-      <span class="layer-icon">${el.type === 'connector' ? '\u2192' : '\u25A1'}</span>
-      <span class="layer-name">${name}</span>
+      <span class="layer-icon">${_getLayerIconSvg(el)}</span>
+      <span class="layer-name">${_escapeAttribute(name)}</span>
       <span class="layer-visibility" data-id="${el.id}">${el.visible !== false ? '\uD83D\uDC41' : '\u2014'}</span>
     `;
     item.addEventListener('click', (e) => {
@@ -722,17 +882,30 @@ function _changeZIndex(order) {
   const maxZ = Math.max(...allZ);
   const minZ = Math.min(...allZ);
   for (const el of selected) {
+    let nextLayer = el.zIndex || 0;
     switch (order) {
-      case 'front': el.zIndex = maxZ + 1; break;
-      case 'back': el.zIndex = minZ - 1; break;
-      case 'forward': el.zIndex = (el.zIndex || 0) + 1; break;
-      case 'backward': el.zIndex = (el.zIndex || 0) - 1; break;
+      case 'front': nextLayer = maxZ + 1; break;
+      case 'back': nextLayer = minZ - 1; break;
+      case 'forward': nextLayer = (el.zIndex || 0) + 1; break;
+      case 'backward': nextLayer = (el.zIndex || 0) - 1; break;
     }
+    _setElementLayer(el, nextLayer);
   }
   const after = snapshotElements();
   commitAction({ type: 'snapshot', before, after });
   renderDocument(state.document);
   refreshSelection();
+  _updateLayersPanel();
+  _updatePropertiesPanel();
+}
+
+function _setElementLayer(element, layer) {
+  updateElement(element.id, { zIndex: layer });
+  if (element.type !== 'group' || !Array.isArray(element.children)) return;
+  for (const childId of element.children) {
+    const child = getElementById(childId);
+    if (child) updateElement(child.id, { zIndex: layer });
+  }
 }
 
 function _alignElements(direction) {
@@ -834,20 +1007,29 @@ function _toggleLock() {
 function _zoomToFit() {
   const state = getState();
   const elements = state.document.elements.filter(e => e.visible && e.type !== 'connector');
+  const wrapper = document.getElementById('canvas-wrapper');
+  if (!wrapper) return;
+  const ww = wrapper.clientWidth - 40;
+  const wh = wrapper.clientHeight - 40;
+
   if (elements.length === 0) {
-    setZoom(1);
+    state.viewport.zoom = 1;
+    state.viewport.panX = 0;
+    state.viewport.panY = 0;
     applyViewport(state.viewport);
+    _updateZoomUI(1);
     return;
   }
   const bounds = getMultiSelectionBounds(elements);
-  const wrapper = document.getElementById('canvas-wrapper');
-  const ww = wrapper.clientWidth - 40;
-  const wh = wrapper.clientHeight - 40;
   const scaleX = ww / bounds.width;
   const scaleY = wh / bounds.height;
-  const scale = Math.min(scaleX, scaleY, 2);
-  setZoom(Math.max(0.1, scale));
+  const newZoom = Math.max(0.1, Math.min(scaleX, scaleY, 2));
+
+  state.viewport.zoom = newZoom;
+  state.viewport.panX = bounds.x - (ww / newZoom - bounds.width) / 2;
+  state.viewport.panY = bounds.y - (wh / newZoom - bounds.height) / 2;
   applyViewport(state.viewport);
+  _updateZoomUI(newZoom);
 }
 
 function _dropComponent(compType, x, y) {

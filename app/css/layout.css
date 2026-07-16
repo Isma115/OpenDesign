@@ -16,20 +16,19 @@
 
 #canvas-wrapper {
   position: relative;
-  overflow: auto;
+  overflow: hidden;
   background: var(--color-canvas-bg);
 }
 
 #canvas-container {
   position: relative;
-  flex-shrink: 0;
 }
 
 #canvas {
   display: block;
-  background: white;
+  background: var(--color-canvas-bg);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
-  transform-origin: 0 0;
+  overflow: visible;
 }
 
 #rulers {

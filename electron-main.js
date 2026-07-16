@@ -12,12 +12,18 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     title: 'GeoFlow Designer',
+    show: false,
+    backgroundColor: '#000000',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     },
     icon: path.join(__dirname, 'app', 'icon.png')
+  });
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
   });
 
   mainWindow.loadFile(path.join(__dirname, 'app', 'index.html'));
