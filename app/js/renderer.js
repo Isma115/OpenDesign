@@ -1,6 +1,8 @@
 // #region Renderizador SVG | Funcionalidad | renderizado de elementos en el lienzo SVG
-import { getElementBounds } from './geometry.js';
+import { getElementBounds, getLocalConnectionPoint } from './geometry.js';
 import { getState } from './state.js';
+import { getConnectionPoint, getConnectionPointDirection, routeConnector } from './connectors.js';
+import { getTheme, updateCanvasTheme } from './theme.js';
 import { getCssClassForElement, getSpecificCssForElement } from './css-template.js';
 
 export const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -37,17 +39,29 @@ export function getSvgCanvas() {
 }
 
 export function renderDocument(docModel) {
-  _svgCanvas.style.background = docModel.canvas.background;
+  updateCanvasTheme(getTheme());
 
   _shapeLayer.innerHTML = '';
   _connectorLayer.innerHTML = '';
   _textLayer.innerHTML = '';
 
-  const sorted = [...docModel.elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+  const parents = new Map();
+  for (const group of docModel.elements.filter(el => el.type === 'group')) {
+    for (const id of group.children || []) parents.set(id, group);
+  }
+  const rootOf = element => {
+    const visited = new Set();
+    while (parents.has(element.id) && !visited.has(element.id)) {
+      visited.add(element.id);
+      element = parents.get(element.id);
+    }
+    return element;
+  };
+  const sorted = [...docModel.elements].sort((a, b) => (rootOf(a).zIndex || 0) - (rootOf(b).zIndex || 0));
   for (const el of sorted) {
-    if (!el.visible) continue;
+    if (!el.visible || !rootOf(el).visible) continue;
     if (el.type === 'connector') {
-      _renderConnector(el);
+      _renderConnector(el, docModel);
     } else if (el.type === 'group') {
       _renderGroup(el, docModel);
     } else {
@@ -60,9 +74,9 @@ export function renderDocument(docModel) {
 }
 
 export function renderElement(element) {
-  if (!element.visible) return;
   const existing = _svgCanvas.querySelector(`[data-element-id="${element.id}"]`);
   if (existing) existing.remove();
+  if (!element.visible) return;
   if (element.type === 'connector') {
     _renderConnector(element);
   } else if (element.type === 'group') {
@@ -70,6 +84,14 @@ export function renderElement(element) {
   } else {
     _renderShape(element, getState().document);
   }
+  const node = _svgCanvas.querySelector(`[data-element-id="${element.id}"]`);
+  if (!node) return;
+  const elements = getState().document.elements;
+  const nextNode = [...node.parentNode.children].find(sibling => {
+    const siblingElement = elements.find(el => el.id === sibling.dataset.elementId);
+    return siblingElement && (siblingElement.zIndex || 0) > (element.zIndex || 0);
+  });
+  if (nextNode) node.parentNode.insertBefore(node, nextNode);
 }
 
 export function removeElementNode(id) {
@@ -199,7 +221,10 @@ function _updateGrid(grid, panX, panY, vpW, vpH) {
     const path = smallPattern.querySelector('path');
     if (path) {
       path.setAttribute('d', `M ${alignedSize} 0 L 0 0 0 ${alignedSize}`);
-      path.setAttribute('stroke', grid.color || '#e5e7eb');
+      const gridColor = grid.color && grid.color !== '#e5e7eb'
+        ? grid.color
+        : getTheme() === 'dark' ? '#475569' : '#e5e7eb';
+      path.setAttribute('stroke', gridColor);
       path.setAttribute('stroke-width', strokeWidth);
     }
   }
@@ -335,7 +360,7 @@ function _createShapeSVG(element) {
       rect.setAttribute('y', y);
       rect.setAttribute('width', width);
       rect.setAttribute('height', height);
-      rect.setAttribute('rx', 4);
+      rect.setAttribute('rx', 0);
       return rect;
     }
     case 'frame': {
@@ -344,7 +369,7 @@ function _createShapeSVG(element) {
       rect.setAttribute('y', y);
       rect.setAttribute('width', width);
       rect.setAttribute('height', height);
-      rect.setAttribute('rx', 8);
+      rect.setAttribute('rx', 0);
       return rect;
     }
     case 'image': {
@@ -465,11 +490,11 @@ function _createTextSVG(element, textStyle = element.text) {
 
 function _renderConnectionPoints(g, element) {
   if (!element.connectionPoints) return;
-  const bounds = getElementBounds(element);
   for (const cp of element.connectionPoints) {
+    const point = getLocalConnectionPoint(element, cp);
     const circle = document.createElementNS(SVG_NS, 'circle');
-    circle.setAttribute('cx', bounds.x + cp.x * bounds.width);
-    circle.setAttribute('cy', bounds.y + cp.y * bounds.height);
+    circle.setAttribute('cx', point.x);
+    circle.setAttribute('cy', point.y);
     circle.setAttribute('r', 5);
     circle.classList.add('connection-point');
     circle.dataset.pointId = cp.id;
@@ -478,7 +503,19 @@ function _renderConnectionPoints(g, element) {
   }
 }
 
-function _renderConnector(connector) {
+function _renderConnector(connector, docModel = getState().document) {
+  const source = docModel.elements.find(el => el.id === connector.source?.elementId);
+  const target = docModel.elements.find(el => el.id === connector.target?.elementId);
+  const sourcePoint = source && getConnectionPoint(source, connector.source.pointId);
+  const targetPoint = target && getConnectionPoint(target, connector.target.pointId);
+  // Recalcular también conexiones guardadas con los antiguos anclajes.
+  if (sourcePoint && targetPoint) {
+    connector = { ...connector, points: routeConnector(
+      sourcePoint, targetPoint, connector.connectorType,
+      getConnectionPointDirection(source, connector.source.pointId),
+      getConnectionPointDirection(target, connector.target.pointId)
+    ) };
+  }
   const g = document.createElementNS(SVG_NS, 'g');
   g.dataset.elementId = connector.id;
   g.classList.add('element-connector');
@@ -541,7 +578,7 @@ function _renderConnector(connector) {
     });
   }
 
-  _shapeLayer.appendChild(g);
+  _connectorLayer.appendChild(g);
 }
 
 function _renderGroup(group, docModel) {
@@ -554,15 +591,15 @@ function _renderGroup(group, docModel) {
   rect.setAttribute('y', group.y);
   rect.setAttribute('width', group.width);
   rect.setAttribute('height', group.height);
-  rect.setAttribute('fill', 'rgba(37, 99, 235, 0.03)');
-  rect.setAttribute('stroke', '#93c5fd');
+  rect.setAttribute('fill', group.css?.className ? 'transparent' : 'rgba(37, 99, 235, 0.03)');
+  rect.setAttribute('stroke', group.css?.className ? 'none' : '#93c5fd');
   rect.setAttribute('stroke-width', 1);
   rect.setAttribute('stroke-dasharray', '6 3');
-  rect.setAttribute('rx', 4);
+  rect.setAttribute('rx', 0);
   rect.dataset.elementId = group.id;
   g.appendChild(rect);
 
-  if (group.name) {
+  if (group.name && !group.css?.className) {
     const text = document.createElementNS(SVG_NS, 'text');
     text.setAttribute('x', group.x + 8);
     text.setAttribute('y', group.y + 16);

@@ -7,30 +7,30 @@ function getComponentPalette() {
   const theme = document.documentElement.getAttribute('data-theme') || 'dark';
   return theme === 'dark' ? {
     button: { fill: '#3b82f6', stroke: '#2563eb', text: '#ffffff' },
-    input: { fill: '#1e293b', stroke: '#475569', text: '#94a3b8' },
-    card: { fill: '#1e293b', stroke: '#334155', text: '#f1f5f9' },
+    input: { fill: '#334155', stroke: '#94a3b8', text: '#94a3b8' },
+    card: { fill: '#334155', stroke: '#94a3b8', text: '#f1f5f9' },
     navbar: { fill: '#0f172a', stroke: '#1e293b', text: '#f1f5f9' },
-    sidebar: { fill: '#1e293b', stroke: '#334155', text: '#94a3b8' },
-    table: { fill: '#1e293b', stroke: '#334155', text: '#f1f5f9', header: '#334155' },
-    checkbox: { fill: '#1e293b', stroke: '#475569', text: '#f1f5f9' },
+    sidebar: { fill: '#334155', stroke: '#94a3b8', text: '#94a3b8' },
+    table: { fill: '#334155', stroke: '#94a3b8', text: '#f1f5f9', header: '#475569' },
+    checkbox: { fill: '#334155', stroke: '#94a3b8', text: '#f1f5f9' },
     toggle: { fill: '#3b82f6', stroke: '#3b82f6' },
-    avatar: { fill: '#334155', stroke: '#475569', text: '#94a3b8' },
-    modal: { fill: '#1e293b', stroke: '#334155', text: '#f1f5f9' },
-    image: { fill: '#1e293b', stroke: '#475569', text: '#64748b' },
-    textarea: { fill: '#1e293b', stroke: '#475569', text: '#94a3b8' }
+    avatar: { fill: '#334155', stroke: '#94a3b8', text: '#94a3b8' },
+    modal: { fill: '#334155', stroke: '#94a3b8', text: '#f1f5f9' },
+    image: { fill: '#334155', stroke: '#94a3b8', text: '#64748b' },
+    textarea: { fill: '#334155', stroke: '#94a3b8', text: '#94a3b8' }
   } : {
     button: { fill: '#2563eb', stroke: '#1d4ed8', text: '#ffffff' },
-    input: { fill: '#ffffff', stroke: '#d1d5db', text: '#9ca3af' },
-    card: { fill: '#ffffff', stroke: '#e5e7eb', text: '#111827' },
+    input: { fill: '#f1f5f9', stroke: '#475569', text: '#9ca3af' },
+    card: { fill: '#f1f5f9', stroke: '#475569', text: '#111827' },
     navbar: { fill: '#111827', stroke: '#111827', text: '#ffffff' },
-    sidebar: { fill: '#f9fafb', stroke: '#e5e7eb', text: '#6b7280' },
-    table: { fill: '#ffffff', stroke: '#e5e7eb', text: '#111827', header: '#f3f4f6' },
-    checkbox: { fill: '#ffffff', stroke: '#d1d5db', text: '#111827' },
+    sidebar: { fill: '#f9fafb', stroke: '#475569', text: '#6b7280' },
+    table: { fill: '#f1f5f9', stroke: '#475569', text: '#111827', header: '#f3f4f6' },
+    checkbox: { fill: '#f1f5f9', stroke: '#475569', text: '#111827' },
     toggle: { fill: '#2563eb', stroke: '#2563eb' },
-    avatar: { fill: '#e5e7eb', stroke: '#d1d5db', text: '#6b7280' },
-    modal: { fill: '#ffffff', stroke: '#e5e7eb', text: '#111827' },
-    image: { fill: '#f9fafb', stroke: '#d1d5db', text: '#9ca3af' },
-    textarea: { fill: '#ffffff', stroke: '#d1d5db', text: '#9ca3af' }
+    avatar: { fill: '#e5e7eb', stroke: '#475569', text: '#6b7280' },
+    modal: { fill: '#f1f5f9', stroke: '#475569', text: '#111827' },
+    image: { fill: '#f9fafb', stroke: '#475569', text: '#9ca3af' },
+    textarea: { fill: '#f1f5f9', stroke: '#475569', text: '#9ca3af' }
   };
 }
 
@@ -49,8 +49,8 @@ export function createComponentGroup(compType, x, y) {
     image: _createImage,
     modal: _createModal
   };
+  if (!Object.hasOwn(factories, compType)) return null;
   const factory = factories[compType];
-  if (!factory) return null;
   return factory(x, y);
 }
 
@@ -83,10 +83,9 @@ function _shapeEl(overrides) {
 function _createButton(x, y) {
   const palette = getComponentPalette();
   const bgId = _id();
-  const textId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
-    id: bgId, shape: 'roundedRectangle',
+    id: bgId, shape: 'rectangle',
     x, y, width: 120, height: 40,
     style: _baseStyle({ fill: palette.button.fill, stroke: palette.button.stroke, strokeWidth: 1 }),
     text: _baseText({ value: 'Button', color: palette.button.text, fontSize: 14, fontWeight: 600 })
@@ -105,7 +104,7 @@ function _createInput(x, y) {
   const bgId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
-    id: bgId, shape: 'roundedRectangle',
+    id: bgId, shape: 'rectangle',
     x, y, width: 200, height: 36,
     style: _baseStyle({ fill: palette.input.fill, stroke: palette.input.stroke, strokeWidth: 1 }),
     text: _baseText({ value: 'Placeholder...', color: palette.input.text, align: 'left', fontSize: 13 })
@@ -124,7 +123,7 @@ function _createTextarea(x, y) {
   const bgId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
-    id: bgId, shape: 'roundedRectangle',
+    id: bgId, shape: 'rectangle',
     x, y, width: 200, height: 80,
     style: _baseStyle({ fill: palette.textarea.fill, stroke: palette.textarea.stroke, strokeWidth: 1 }),
     text: _baseText({ value: '', align: 'left', verticalAlign: 'top', fontSize: 13, color: palette.textarea.text })
@@ -144,7 +143,7 @@ function _createCheckbox(x, y) {
   const labelId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const box = _shapeEl({
-    id: boxId, shape: 'roundedRectangle',
+    id: boxId, shape: 'rectangle',
     x, y: y + 2, width: 18, height: 18,
     style: _baseStyle({ fill: palette.checkbox.fill, stroke: palette.checkbox.stroke, strokeWidth: 2 })
   });
@@ -168,7 +167,7 @@ function _createToggle(x, y) {
   const bgId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
-    id: bgId, shape: 'roundedRectangle',
+    id: bgId, shape: 'rectangle',
     x, y, width: 44, height: 24,
     style: _baseStyle({ fill: palette.toggle.fill, stroke: palette.toggle.stroke, strokeWidth: 0 })
   });
@@ -187,7 +186,7 @@ function _createCard(x, y) {
   const titleId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
-    id: bgId, shape: 'roundedRectangle',
+    id: bgId, shape: 'rectangle',
     x, y, width: 240, height: 160,
     style: _baseStyle({ fill: palette.card.fill, stroke: palette.card.stroke, strokeWidth: 1 })
   });
@@ -211,7 +210,7 @@ function _createAvatar(x, y) {
   const bgId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
-    id: bgId, shape: 'ellipse',
+    id: bgId, shape: 'rectangle',
     x, y, width: 48, height: 48,
     style: _baseStyle({ fill: palette.avatar.fill, stroke: palette.avatar.stroke, strokeWidth: 1 }),
     text: _baseText({ value: 'A', fontSize: 18, fontWeight: 600, color: palette.avatar.text })
@@ -313,7 +312,7 @@ function _createModal(x, y) {
   const titleId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
-    id: bgId, shape: 'roundedRectangle',
+    id: bgId, shape: 'rectangle',
     x, y, width: 360, height: 240,
     style: _baseStyle({ fill: palette.modal.fill, stroke: palette.modal.stroke, strokeWidth: 1 })
   });

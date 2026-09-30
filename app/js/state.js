@@ -76,37 +76,34 @@ export function updateDocument(updater) {
   } else {
     Object.assign(_state.document, updater);
   }
-  _state.document.metadata.updatedAt = new Date().toISOString();
-  _state.dirty = true;
-  _notify();
+  _markDocumentUpdated();
 }
 
 export function addElement(element) {
   _state.document.elements.push(element);
-  _state.document.metadata.updatedAt = new Date().toISOString();
-  _state.dirty = true;
-  _notify();
+  _markDocumentUpdated();
 }
 
 export function updateElement(id, patch) {
   const el = getElementById(id);
-  if (!el) return;
-  if (patch.style) {
-    el.style = Object.assign({}, el.style, patch.style);
-    delete patch.style;
+  if (!el) return false;
+  _applyElementPatch(el, patch);
+  _markDocumentUpdated();
+  return true;
+}
+
+export function updateElements(updates) {
+  let changed = false;
+
+  for (const update of updates) {
+    const el = getElementById(update?.id);
+    if (!el || !update?.patch) continue;
+    _applyElementPatch(el, update.patch);
+    changed = true;
   }
-  if (patch.text) {
-    el.text = Object.assign({}, el.text, patch.text);
-    delete patch.text;
-  }
-  if (patch.css) {
-    el.css = Object.assign({}, el.css, patch.css);
-    delete patch.css;
-  }
-  Object.assign(el, patch);
-  _state.document.metadata.updatedAt = new Date().toISOString();
-  _state.dirty = true;
-  _notify();
+
+  if (changed) _markDocumentUpdated();
+  return changed;
 }
 
 export function removeElement(id) {
@@ -114,9 +111,7 @@ export function removeElement(id) {
   if (idx === -1) return null;
   const removed = _state.document.elements.splice(idx, 1)[0];
   _state.selectedElementIds = _state.selectedElementIds.filter(sid => sid !== id);
-  _state.document.metadata.updatedAt = new Date().toISOString();
-  _state.dirty = true;
-  _notify();
+  _markDocumentUpdated();
   return removed;
 }
 
@@ -131,7 +126,18 @@ export function getSelectedElements() {
 }
 
 export function setSelection(ids) {
-  _state.selectedElementIds = [...ids];
+  const selectedGroups = ids.map(getElementById).filter(el => el?.type === 'group');
+  const childIds = new Set();
+  const collect = group => {
+    for (const id of group.children || []) {
+      if (childIds.has(id)) continue;
+      childIds.add(id);
+      const child = getElementById(id);
+      if (child?.type === 'group') collect(child);
+    }
+  };
+  selectedGroups.forEach(collect);
+  _state.selectedElementIds = [...new Set(ids)].filter(id => !childIds.has(id));
   _notify();
 }
 
@@ -181,6 +187,54 @@ export function subscribe(listener) {
 
 export function setDirty(dirty) {
   _state.dirty = dirty;
+  _notify();
+}
+
+function _applyElementPatch(element, patch) {
+  if (element.type === 'group' && ['x', 'y', 'width', 'height'].some(key => key in patch)) {
+    const x = patch.x ?? element.x;
+    const y = patch.y ?? element.y;
+    const sx = element.width ? (patch.width ?? element.width) / element.width : 1;
+    const sy = element.height ? (patch.height ?? element.height) / element.height : 1;
+    for (const id of element.children || []) {
+      const child = getElementById(id);
+      if (!child || child === element) continue;
+      const childPatch = {
+        x: x + (child.x - element.x) * sx,
+        y: y + (child.y - element.y) * sy,
+        width: child.width * sx,
+        height: child.height * sy
+      };
+      if (child._lineData) {
+        childPatch._lineData = {
+          x1: x + (child._lineData.x1 - element.x) * sx,
+          y1: y + (child._lineData.y1 - element.y) * sy,
+          x2: x + (child._lineData.x2 - element.x) * sx,
+          y2: y + (child._lineData.y2 - element.y) * sy
+        };
+      }
+      _applyElementPatch(child, childPatch);
+    }
+  }
+  const nextPatch = { ...patch };
+  if (nextPatch.style && typeof nextPatch.style === 'object') {
+    element.style = Object.assign({}, element.style, nextPatch.style);
+    delete nextPatch.style;
+  }
+  if (nextPatch.text && typeof nextPatch.text === 'object') {
+    element.text = Object.assign({}, element.text, nextPatch.text);
+    delete nextPatch.text;
+  }
+  if (nextPatch.css && typeof nextPatch.css === 'object') {
+    element.css = Object.assign({}, element.css, nextPatch.css);
+    delete nextPatch.css;
+  }
+  Object.assign(element, nextPatch);
+}
+
+function _markDocumentUpdated() {
+  _state.document.metadata.updatedAt = new Date().toISOString();
+  _state.dirty = true;
   _notify();
 }
 

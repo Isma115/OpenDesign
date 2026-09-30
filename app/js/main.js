@@ -1,10 +1,10 @@
 // #region Inicializacion de la aplicacion | Funcionalidad | arranque y configuracion inicial
-import { getState, subscribe } from './state.js';
+import { getState, subscribe, resetDocument } from './state.js';
 import { initRenderer, renderDocument, applyViewport } from './renderer.js';
 import { initSelection, refreshSelection } from './selection.js';
 import { initTools } from './tools.js';
 import { initKeyboard, updateToolUI } from './keyboard.js';
-import { initUI, refreshPropertiesPanel } from './ui.js';
+import { initUI, refreshPropertiesPanel, loadExampleProject } from './ui.js';
 import { loadFromLocal, initAutoSave } from './storage.js';
 import { initTheme, getTheme, updateCanvasTheme } from './theme.js';
 
@@ -54,9 +54,9 @@ function main() {
 
 function _handleElectronMenuAction(action) {
   switch (action) {
+    case 'example-project': loadExampleProject(); break;
     case 'new':
       if (confirm('Crear nuevo proyecto? Se perderan cambios no guardados.')) {
-        const { resetDocument } = require('./state.js');
         resetDocument();
         renderDocument(getState().document);
         refreshSelection();

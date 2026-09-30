@@ -47,7 +47,7 @@
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
   background: #4b5563;
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {

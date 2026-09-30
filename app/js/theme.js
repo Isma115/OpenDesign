@@ -3,11 +3,7 @@ const THEME_KEY = 'geoflow_theme';
 
 export function initTheme() {
   const saved = localStorage.getItem(THEME_KEY);
-  if (saved) {
-    applyTheme(saved);
-  } else {
-    applyTheme('dark');
-  }
+  applyTheme(saved === 'light' ? 'light' : 'dark');
 }
 
 export function toggleTheme() {
@@ -15,8 +11,6 @@ export function toggleTheme() {
   const next = current === 'dark' ? 'light' : 'dark';
   applyTheme(next);
   localStorage.setItem(THEME_KEY, next);
-  updateThemeButton(next);
-  updateCanvasTheme(next);
 }
 
 function applyTheme(theme) {
@@ -50,14 +44,14 @@ export function updateCanvasTheme(theme) {
       const path = gridPattern.querySelector('path');
       if (path) {
         path.setAttribute('stroke', '#475569');
-        path.setAttribute('opacity', '0.2');
+        path.setAttribute('opacity', '0.12');
       }
     }
     if (gridPatternLarge) {
       const path = gridPatternLarge.querySelector('path');
       if (path) {
         path.setAttribute('stroke', '#475569');
-        path.setAttribute('opacity', '0.3');
+        path.setAttribute('opacity', '0.2');
       }
     }
     const arrowMarker = document.getElementById('arrow-marker');
@@ -73,14 +67,14 @@ export function updateCanvasTheme(theme) {
       const path = gridPattern.querySelector('path');
       if (path) {
         path.setAttribute('stroke', '#e5e7eb');
-        path.setAttribute('opacity', '0.3');
+        path.setAttribute('opacity', '0.2');
       }
     }
     if (gridPatternLarge) {
       const path = gridPatternLarge.querySelector('path');
       if (path) {
         path.setAttribute('stroke', '#d1d5db');
-        path.setAttribute('opacity', '0.4');
+        path.setAttribute('opacity', '0.3');
       }
     }
     const arrowMarker = document.getElementById('arrow-marker');

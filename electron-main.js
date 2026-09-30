@@ -13,6 +13,7 @@ function createWindow() {
     minHeight: 600,
     title: 'GeoFlow Designer',
     show: false,
+    fullscreen: false,
     backgroundColor: '#000000',
     webPreferences: {
       nodeIntegration: false,
@@ -23,6 +24,7 @@ function createWindow() {
   });
 
   mainWindow.once('ready-to-show', () => {
+    mainWindow.maximize();
     mainWindow.show();
   });
 
@@ -42,6 +44,10 @@ function createWindow() {
           label: 'Abrir JSON...',
           accelerator: 'CmdOrCtrl+O',
           click: () => mainWindow.webContents.send('menu-action', 'open')
+        },
+        {
+          label: 'Proyecto de Ejemplo',
+          click: () => mainWindow.webContents.send('menu-action', 'example-project')
         },
         { type: 'separator' },
         {

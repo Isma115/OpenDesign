@@ -1,12 +1,23 @@
 // #region Herramientas de dibujo | Funcionalidad | manejo de interacciones del lienzo
-import { getState, setActiveTool, addElement, updateElement, removeElement, setSelection, clearSelection, getElementById } from './state.js';
+import { getState, setActiveTool, addElement, updateElement, updateElements, removeElement, setSelection, clearSelection, getElementById } from './state.js';
 import { screenToCanvas, getElementBounds } from './geometry.js';
 import { createShapeByTool } from './shapes.js';
 import { renderDocument, renderElement, updateElementNode, clearPreview, renderPreview, applyViewport, getSvgCanvas, renderGuideLines, clearGuides, SVG_NS } from './renderer.js';
-import { handleSelectionClick, handleCanvasClick, hitTest, hitTestHandle, hitTestConnectionPoint, startSelectionBox, updateSelectionBox, endSelectionBox, refreshSelection } from './selection.js';
+import { handleSelectionClick, handleCanvasClick, hitTest, hitTestHandle, hitTestConnectionPoint, updateSelectionBox, endSelectionBox, refreshSelection } from './selection.js';
 import { snapElement, snapPoint } from './snapping.js';
 import { commitAction, snapshotElements } from './history.js';
-import { createConnectorElement, updateAllConnectorsForElement } from './connectors.js';
+import {
+  createConnectorElement,
+  getBestConnectionPointId,
+  getConnectableElementAtPoint,
+  getConnectionPoint,
+  getConnectionPointDirection,
+  getConnectionPointIdFromClick,
+  resolveConnectorEndpoints,
+  routeConnector,
+  updateAllConnectorsForElement,
+  updateAllConnectorsForElements
+} from './connectors.js';
 
 let _dragData = null;
 let _lastClickTime = 0;
@@ -28,6 +39,11 @@ export function initTools() {
     btn.addEventListener('click', () => {
       const tool = btn.dataset.tool;
       if (tool) {
+        _cancelActiveInteraction();
+        if (_isConnectionTool(tool)) {
+          clearSelection();
+          refreshSelection();
+        }
         setActiveTool(tool);
         _updateToolCursor();
       }
@@ -49,8 +65,8 @@ function _onPointerDown(e) {
 
   if (state.activeTool === 'select') {
     _handleSelectDown(e, point);
-  } else if (state.activeTool === 'connector') {
-    _handleConnectorDown(e, point);
+  } else if (_isConnectionTool(state.activeTool)) {
+    _handleConnectionToolDown(e, point);
   } else if (_isDrawingTool(state.activeTool)) {
     _handleDrawDown(e, point);
   }
@@ -107,9 +123,17 @@ function _onPointerUp(e) {
   const canvas = getSvgCanvas();
   canvas.releasePointerCapture(e.pointerId);
 
-  const didMove = _pointerDownPos &&
-    (Math.abs(point.x - _pointerDownPos.x) > DBL_CLICK_DISTANCE ||
-     Math.abs(point.y - _pointerDownPos.y) > DBL_CLICK_DISTANCE);
+  const didMove = state.interaction.isPanning
+    ? Math.abs(e.clientX - state.interaction.dragStart.x) > DBL_CLICK_DISTANCE ||
+      Math.abs(e.clientY - state.interaction.dragStart.y) > DBL_CLICK_DISTANCE
+    : _pointerDownPos &&
+      (Math.abs(point.x - _pointerDownPos.x) > DBL_CLICK_DISTANCE ||
+       Math.abs(point.y - _pointerDownPos.y) > DBL_CLICK_DISTANCE);
+
+  if (didMove) {
+    _lastClickTime = 0;
+    _lastClickPoint = null;
+  }
 
   if (!didMove) {
     const now = Date.now();
@@ -156,7 +180,7 @@ function _onPointerUp(e) {
   }
 
   if (state.interaction.isConnecting) {
-    _endConnect(point);
+    _pointerDownPos = null;
     return;
   }
 
@@ -169,7 +193,7 @@ function _handleDblClick(point) {
   if (!hitId) return;
   const el = getElementById(hitId);
   if (!el || el.locked) return;
-  if (el.type === 'connector') return;
+  if (!el.text || el.shape === 'image') return;
   _startTextEdit(el);
 }
 
@@ -224,16 +248,15 @@ function _handleSelectDown(e, point) {
     _startDrag(point);
   } else {
     handleCanvasClick(e);
-    startSelectionBox(point);
-    state.interaction.isDrawing = true;
-    state.interaction._isSelectionBox = true;
-    state.interaction.dragStart = point;
+    _startPan(e);
   }
 }
 
 function _startDrag(point) {
   const state = getState();
-  const selected = state.selectedElementIds.map(id => getElementById(id)).filter(Boolean);
+  const selected = state.selectedElementIds
+    .map(id => getElementById(id))
+    .filter(element => element && element.type !== 'connector');
   if (selected.length === 0) return;
   state.interaction.isDragging = true;
   state.interaction.dragStart = point;
@@ -254,23 +277,25 @@ function _doDrag(point) {
   if (!_dragData) return;
   const dx = point.x - state.interaction.dragStart.x;
   const dy = point.y - state.interaction.dragStart.y;
+  const updates = [];
+  const movedElementIds = [];
 
   for (const start of _dragData.startPositions) {
     const el = getElementById(start.id);
     if (!el || el.locked) continue;
-    if (el.type === 'connector' && start.points) {
-      el.points = start.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
-    } else {
-      const snapped = snapElement({ ...el, x: start.x, y: start.y }, dx, dy);
-      el.x = snapped.x;
-      el.y = snapped.y;
-      if (start.lineData) {
-        const snappedDx = snapped.x - start.x;
-        const snappedDy = snapped.y - start.y;
-        _translateLineData(el, start.lineData, snappedDx, snappedDy);
-      }
-      renderGuideLines(snapped.guides);
+    const snapped = snapElement({ ...el, x: start.x, y: start.y }, dx, dy);
+    const patch = { x: snapped.x, y: snapped.y };
+    if (start.lineData) {
+      const snappedDx = snapped.x - start.x;
+      const snappedDy = snapped.y - start.y;
+      patch._lineData = _getTranslatedLineData(start.lineData, snappedDx, snappedDy);
     }
+    updates.push({ id: el.id, patch });
+    movedElementIds.push(el.id);
+    renderGuideLines(snapped.guides);
+  }
+  if (updateElements(updates)) {
+    updateAllConnectorsForElements(movedElementIds);
   }
   renderDocument(state.document);
   refreshSelection();
@@ -284,9 +309,6 @@ function _endDrag(point) {
   if (_dragData) {
     const after = snapshotElements();
     commitAction({ type: 'snapshot', before: _dragData.snapshot, after });
-    for (const start of _dragData.startPositions) {
-      updateAllConnectorsForElement(start.id);
-    }
     _dragData = null;
   }
   renderDocument(state.document);
@@ -341,20 +363,29 @@ function _doResize(point) {
     }
   }
 
-  el.x = newX;
-  el.y = newY;
-  el.width = newW;
-  el.height = newH;
+  const patch = { x: newX, y: newY, width: newW, height: newH };
   if (_dragData.startLineData) {
-    _resizeLineData(el, _dragData.startLineData, _dragData.startX, _dragData.startY, _dragData.startWidth, _dragData.startHeight);
+    patch._lineData = _getResizedLineData(
+      _dragData.startLineData,
+      _dragData.startX,
+      _dragData.startY,
+      _dragData.startWidth,
+      _dragData.startHeight,
+      newX,
+      newY,
+      newW,
+      newH
+    );
   }
+  updateElement(el.id, patch);
+  updateAllConnectorsForElement(el.id);
 
   renderDocument(state.document);
   refreshSelection();
 }
 
-function _translateLineData(element, startLineData, dx, dy) {
-  element._lineData = {
+function _getTranslatedLineData(startLineData, dx, dy) {
+  return {
     x1: startLineData.x1 + dx,
     y1: startLineData.y1 + dy,
     x2: startLineData.x2 + dx,
@@ -362,14 +393,14 @@ function _translateLineData(element, startLineData, dx, dy) {
   };
 }
 
-function _resizeLineData(element, startLineData, startX, startY, startWidth, startHeight) {
-  const scaleX = startWidth ? element.width / startWidth : 1;
-  const scaleY = startHeight ? element.height / startHeight : 1;
-  element._lineData = {
-    x1: element.x + (startLineData.x1 - startX) * scaleX,
-    y1: element.y + (startLineData.y1 - startY) * scaleY,
-    x2: element.x + (startLineData.x2 - startX) * scaleX,
-    y2: element.y + (startLineData.y2 - startY) * scaleY
+function _getResizedLineData(startLineData, startX, startY, startWidth, startHeight, x, y, width, height) {
+  const scaleX = startWidth ? width / startWidth : 1;
+  const scaleY = startHeight ? height / startHeight : 1;
+  return {
+    x1: x + (startLineData.x1 - startX) * scaleX,
+    y1: y + (startLineData.y1 - startY) * scaleY,
+    x2: x + (startLineData.x2 - startX) * scaleX,
+    y2: y + (startLineData.y2 - startY) * scaleY
   };
 }
 
@@ -380,9 +411,6 @@ function _endResize(point) {
   if (_dragData) {
     const after = snapshotElements();
     commitAction({ type: 'snapshot', before: _dragData.snapshot, after });
-    if (state.selectedElementIds[0]) {
-      updateAllConnectorsForElement(state.selectedElementIds[0]);
-    }
     _dragData = null;
   }
   renderDocument(state.document);
@@ -412,8 +440,10 @@ function _doRotate(point) {
     point.y - _dragData.centerY,
     point.x - _dragData.centerX
   ) * 180 / Math.PI + 90;
-  el.rotation = Math.round(angle) % 360;
-  if (el.rotation < 0) el.rotation += 360;
+  let rotation = Math.round(angle) % 360;
+  if (rotation < 0) rotation += 360;
+  updateElement(el.id, { rotation });
+  updateAllConnectorsForElement(el.id);
   renderDocument(state.document);
   refreshSelection();
 }
@@ -431,54 +461,225 @@ function _endRotate(point) {
   refreshSelection();
 }
 
-function _handleConnectorDown(e, point) {
+function _handleConnectionToolDown(e, point) {
   const state = getState();
-  const cp = hitTestConnectionPoint(point);
-  if (cp) {
-    state.interaction.isConnecting = true;
-    state.interaction.connectSource = cp;
-    state.interaction.dragStart = point;
+  if (state.interaction.isConnecting && state.interaction.connectSource) {
+    _completeConnection(point);
+    return;
   }
+
+  const sourceTarget = _getConnectionTargetAtPoint(point);
+  if (sourceTarget) {
+    _startConnection(sourceTarget.element, point, sourceTarget.pointId);
+    return;
+  }
+
+  // Las líneas libres siguen estando disponibles al empezar sobre un espacio vacío.
+  if (state.activeTool === 'line' || state.activeTool === 'arrow') {
+    _handleDrawDown(e, point);
+  }
+}
+
+function _startConnection(sourceElement, point, preferredPointId = null) {
+  const state = getState();
+  state.interaction.isConnecting = true;
+  state.interaction.connectSource = {
+    elementId: sourceElement.id,
+    preferredPointId: preferredPointId || getConnectionPointIdFromClick(sourceElement, point),
+    tool: state.activeTool
+  };
+  state.interaction.currentPointer = point;
+
+  const canvas = getSvgCanvas();
+  if (canvas) {
+    canvas.classList.add('connection-pending');
+    _setConnectionHighlight(sourceElement.id);
+  }
+  _doConnect(point);
 }
 
 function _doConnect(point) {
   const state = getState();
-  if (!state.interaction.connectSource) return;
-  const src = state.interaction.connectSource;
-  const previewSvg = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  previewSvg.setAttribute('x1', src.x);
-  previewSvg.setAttribute('y1', src.y);
-  previewSvg.setAttribute('x2', point.x);
-  previewSvg.setAttribute('y2', point.y);
+  const source = state.interaction.connectSource;
+  if (!source) return;
+
+  const sourceElement = getElementById(source.elementId);
+  if (!sourceElement) {
+    _clearConnectionInteraction();
+    return;
+  }
+
+  state.interaction.currentPointer = point;
+  const config = _getConnectionToolConfig(source.tool);
+  const target = _getConnectionTargetAtPoint(point, sourceElement.id);
+  const targetElement = target?.element || null;
+
+  if (targetElement) {
+    const endpoints = resolveConnectorEndpoints(
+      sourceElement,
+      targetElement,
+      source.preferredPointId,
+      target.pointId
+    );
+    if (endpoints) {
+      const sourcePoint = getConnectionPoint(sourceElement, endpoints.source.pointId);
+      const targetPoint = getConnectionPoint(targetElement, endpoints.target.pointId);
+      if (sourcePoint && targetPoint) {
+        const points = routeConnector(
+          sourcePoint,
+          targetPoint,
+          config.connectorType,
+          getConnectionPointDirection(sourceElement, endpoints.source.pointId),
+          getConnectionPointDirection(targetElement, endpoints.target.pointId)
+        );
+        _renderConnectionPreview(points, config);
+        _setConnectionHighlight(sourceElement.id, targetElement.id);
+        return;
+      }
+    }
+  }
+
+  const sourcePointId = getBestConnectionPointId(sourceElement, point, source.preferredPointId);
+  const sourcePoint = getConnectionPoint(sourceElement, sourcePointId);
+  if (!sourcePoint) return;
+  const points = routeConnector(
+    sourcePoint,
+    point,
+    config.connectorType,
+    getConnectionPointDirection(sourceElement, sourcePointId)
+  );
+  _renderConnectionPreview(points, config);
+  _setConnectionHighlight(sourceElement.id);
+}
+
+function _completeConnection(point) {
+  const state = getState();
+  const source = state.interaction.connectSource;
+  const sourceElement = source ? getElementById(source.elementId) : null;
+  const target = sourceElement
+    ? _getConnectionTargetAtPoint(point, sourceElement.id)
+    : null;
+  const targetElement = target?.element || null;
+
+  if (!sourceElement || !targetElement) {
+    _clearConnectionInteraction();
+    return;
+  }
+
+  const endpoints = resolveConnectorEndpoints(
+    sourceElement,
+    targetElement,
+    source.preferredPointId,
+    target.pointId
+  );
+  if (!endpoints) {
+    _clearConnectionInteraction();
+    return;
+  }
+
+  const config = _getConnectionToolConfig(source.tool);
+  const before = snapshotElements();
+  const connector = createConnectorElement(
+    endpoints.source,
+    endpoints.target,
+    config.connectorType,
+    config.styleOverrides
+  );
+
+  if (connector) {
+    addElement(connector);
+    const after = snapshotElements();
+    commitAction({ type: 'snapshot', before, after });
+    setSelection([connector.id]);
+  }
+
+  _clearConnectionInteraction();
+  renderDocument(state.document);
+  refreshSelection();
+}
+
+function _getConnectionTargetAtPoint(point, excludedElementId = null) {
+  const connectionPoint = hitTestConnectionPoint(point);
+  if (connectionPoint && connectionPoint.elementId !== excludedElementId) {
+    const element = getElementById(connectionPoint.elementId);
+    if (element) {
+      return { element, pointId: connectionPoint.pointId };
+    }
+  }
+
+  const element = getConnectableElementAtPoint(point, excludedElementId);
+  if (!element) return null;
+  return {
+    element,
+    pointId: getConnectionPointIdFromClick(element, point)
+  };
+}
+
+function _renderConnectionPreview(points, config) {
+  const previewSvg = document.createElementNS(SVG_NS, 'path');
+  previewSvg.setAttribute('d', _getConnectorPathData(points, config.connectorType));
+  if (config.styleOverrides.endMarker === 'arrow') {
+    previewSvg.setAttribute('marker-end', 'url(#arrow-marker)');
+  }
   previewSvg.classList.add('connector-preview');
   renderPreview(previewSvg);
 }
 
-function _endConnect(point) {
+function _getConnectionToolConfig(tool) {
+  switch (tool) {
+    case 'line':
+      return {
+        connectorType: 'straight',
+        styleOverrides: { endMarker: null }
+      };
+    case 'arrow':
+      return {
+        connectorType: 'straight',
+        styleOverrides: { endMarker: 'arrow' }
+      };
+    case 'connector':
+    default:
+      return {
+        connectorType: 'orthogonal',
+        styleOverrides: { endMarker: 'arrow' }
+      };
+  }
+}
+
+function _getConnectorPathData(points, connectorType) {
+  if (connectorType === 'curved' && points.length >= 4) {
+    return `M ${points[0].x} ${points[0].y} C ${points[1].x} ${points[1].y}, ${points[2].x} ${points[2].y}, ${points[3].x} ${points[3].y}`;
+  }
+  return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+}
+
+function _setConnectionHighlight(sourceId, targetId = null) {
+  const canvas = getSvgCanvas();
+  if (!canvas) return;
+  canvas.querySelectorAll('.connection-source, .connection-target').forEach(node => {
+    node.classList.remove('connection-source', 'connection-target');
+  });
+  const sourceNode = canvas.querySelector(`[data-element-id="${sourceId}"]`);
+  if (sourceNode) sourceNode.classList.add('connection-source');
+  if (targetId) {
+    const targetNode = canvas.querySelector(`[data-element-id="${targetId}"]`);
+    if (targetNode) targetNode.classList.add('connection-target');
+  }
+}
+
+function _clearConnectionInteraction() {
   const state = getState();
   state.interaction.isConnecting = false;
-  clearPreview();
-  _pointerDownPos = null;
-  if (!state.interaction.connectSource) return;
-
-  const cp = hitTestConnectionPoint(point);
-  if (cp && cp.elementId !== state.interaction.connectSource.elementId) {
-    const before = snapshotElements();
-    const connector = createConnectorElement(
-      state.interaction.connectSource,
-      cp,
-      'orthogonal'
-    );
-    if (connector) {
-      addElement(connector);
-      const after = snapshotElements();
-      commitAction({ type: 'snapshot', before, after });
-      setSelection([connector.id]);
-      renderDocument(state.document);
-      refreshSelection();
-    }
-  }
   state.interaction.connectSource = null;
+  state.interaction.currentPointer = null;
+  clearPreview();
+  const canvas = getSvgCanvas();
+  if (canvas) {
+    canvas.classList.remove('connection-pending');
+    canvas.querySelectorAll('.connection-source, .connection-target').forEach(node => {
+      node.classList.remove('connection-source', 'connection-target');
+    });
+  }
 }
 
 function _handleDrawDown(e, point) {
@@ -503,11 +704,20 @@ function _doDraw(point) {
 
   if (w < 3 && h < 3) return;
 
-  const previewSvg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  previewSvg.setAttribute('x', x);
-  previewSvg.setAttribute('y', y);
-  previewSvg.setAttribute('width', w);
-  previewSvg.setAttribute('height', h);
+  const isLineTool = state.activeTool === 'line' || state.activeTool === 'arrow';
+  const previewSvg = document.createElementNS(SVG_NS, isLineTool ? 'line' : 'rect');
+  if (isLineTool) {
+    previewSvg.setAttribute('x1', start.x);
+    previewSvg.setAttribute('y1', start.y);
+    previewSvg.setAttribute('x2', point.x);
+    previewSvg.setAttribute('y2', point.y);
+    if (state.activeTool === 'arrow') previewSvg.setAttribute('marker-end', 'url(#arrow-marker)');
+  } else {
+    previewSvg.setAttribute('x', x);
+    previewSvg.setAttribute('y', y);
+    previewSvg.setAttribute('width', w);
+    previewSvg.setAttribute('height', h);
+  }
   previewSvg.classList.add('shape-preview');
   renderPreview(previewSvg);
 }
@@ -525,12 +735,29 @@ function _endDraw(point) {
 
   clearPreview();
   const start = state.interaction.dragStart;
+  const tool = state.activeTool;
+  const isLineTool = tool === 'line' || tool === 'arrow';
+  let element = null;
+
+  if (isLineTool) {
+    const hasLength = Math.hypot(point.x - start.x, point.y - start.y) >= 5;
+    const endPoint = hasLength ? point : { x: start.x + 150, y: start.y };
+    const snappedStart = snapPoint(start.x, start.y);
+    const snappedEnd = snapPoint(endPoint.x, endPoint.y);
+    element = createShapeByTool(
+      tool,
+      snappedStart.x,
+      snappedStart.y,
+      snappedEnd.x - snappedStart.x,
+      snappedEnd.y - snappedStart.y
+    );
+  }
+
   let x = Math.min(start.x, point.x);
   let y = Math.min(start.y, point.y);
   let w = Math.abs(point.x - start.x);
   let h = Math.abs(point.y - start.y);
 
-  const tool = state.activeTool;
   if (tool === 'text' || tool === 'note') {
     x = start.x;
     y = start.y;
@@ -538,13 +765,15 @@ function _endDraw(point) {
     h = 0;
   }
 
-  if (w < 5 && h < 5 && tool !== 'text' && tool !== 'note') {
-    w = tool === 'line' || tool === 'arrow' ? 150 : 120;
-    h = tool === 'line' || tool === 'arrow' ? 0 : 80;
+  if (!isLineTool && w < 5 && h < 5 && tool !== 'text' && tool !== 'note') {
+    w = 120;
+    h = 80;
   }
 
-  const snapped = snapPoint(x, y);
-  const element = createShapeByTool(tool, snapped.x, snapped.y, w, h);
+  if (!element) {
+    const snapped = snapPoint(x, y);
+    element = createShapeByTool(tool, snapped.x, snapped.y, w, h);
+  }
   if (element) {
     const before = _dragData ? _dragData.snapshot : snapshotElements();
     addElement(element);
@@ -555,6 +784,11 @@ function _endDraw(point) {
     refreshSelection();
     setActiveTool('select');
     _updateToolCursor();
+    if (tool === 'text' || tool === 'note') {
+      _lastClickTime = 0;
+      _lastClickPoint = null;
+      _startTextEdit(element);
+    }
   }
   _dragData = null;
   _pointerDownPos = null;
@@ -688,17 +922,24 @@ function _cancelActiveInteraction() {
   state.interaction.isPanning = false;
   state.interaction.isRotating = false;
   state.interaction.isResizing = false;
-  state.interaction.isConnecting = false;
   state.interaction.dragStart = null;
   state.interaction.resizeHandle = null;
-  state.interaction.connectSource = null;
   state.interaction._isSelectionBox = false;
-  clearPreview();
+  _clearConnectionInteraction();
   clearGuides();
   const canvas = getSvgCanvas();
   if (canvas) canvas.classList.remove('panning');
   _dragData = null;
   _pointerDownPos = null;
+}
+
+export function cancelActiveCanvasInteraction() {
+  _cancelActiveInteraction();
+  _updateToolCursor();
+}
+
+function _isConnectionTool(tool) {
+  return ['line', 'arrow', 'connector'].includes(tool);
 }
 
 function _isDrawingTool(tool) {
@@ -715,6 +956,7 @@ function _updateToolCursor() {
   const canvas = getSvgCanvas();
   canvas.setAttribute('class', '');
   canvas.classList.add(`tool-${state.activeTool}`);
+  if (state.interaction.isConnecting) canvas.classList.add('connection-pending');
 }
 
 function _updateCoords(point) {

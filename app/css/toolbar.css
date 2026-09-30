@@ -36,7 +36,7 @@
 
 .menu-trigger {
   padding: 4px 10px;
-  border-radius: 4px;
+  border-radius: 0;
   font-size: 13px;
   color: var(--color-text);
   transition: background 0.15s;
@@ -55,7 +55,7 @@
   min-width: 220px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: 0;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   padding: 4px;
   z-index: 200;
@@ -71,7 +71,7 @@
   justify-content: space-between;
   width: 100%;
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 0;
   text-align: left;
   font-size: 13px;
   transition: background 0.1s;
@@ -98,7 +98,7 @@
   border: 1px solid transparent;
   background: transparent;
   padding: 4px 12px;
-  border-radius: 4px;
+  border-radius: 0;
   font-size: 13px;
   width: 240px;
   transition: border-color 0.15s, background 0.15s;
@@ -127,7 +127,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 0;
   font-size: 16px;
   color: var(--color-text);
   transition: background 0.15s;
@@ -173,7 +173,7 @@
 
 #left-toolbar::-webkit-scrollbar-thumb {
   background: var(--color-border);
-  border-radius: 3px;
+  border-radius: 0;
 }
 
 .tool-section {
@@ -189,7 +189,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 0;
   color: var(--color-text);
   transition: background 0.15s, color 0.15s;
 }

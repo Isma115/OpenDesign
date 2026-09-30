@@ -1,5 +1,5 @@
 // #region Interfaz de usuario | Funcionalidad | inicializacion y gestion de la UI
-import { getState, updateElement, updateDocument, setSelection, clearSelection, getElementById, getSelectedElements, setActiveTool, addElement, removeElement, resetDocument } from './state.js';
+import { getState, updateElement, updateElements, updateDocument, setSelection, clearSelection, getElementById, getSelectedElements, setActiveTool, addElement, removeElement, resetDocument } from './state.js';
 import { renderDocument, applyViewport } from './renderer.js';
 import { refreshSelection } from './selection.js';
 import { commitAction, snapshotElements } from './history.js';
@@ -11,6 +11,8 @@ import { getElementBounds, getMultiSelectionBounds, screenToCanvas } from './geo
 import { updateConnectorPath, updateAllConnectorsForElement } from './connectors.js';
 import { createComponentGroup, getPendingChildren } from './components.js';
 import { toggleTheme } from './theme.js';
+import { createExampleDocument } from './example.js';
+import { loadDocument, setDirty } from './state.js';
 import { copySelectedElements, pasteClipboardElements } from './clipboard.js';
 import {
   getCssClassForElement,
@@ -26,6 +28,7 @@ let _elementPropertyInputKey = null;
 export function initUI() {
   _initMenuBars();
   _initPanelTabs();
+  _initRightPanelToggle();
   _initPropertyInputs();
   _initTopbarActions();
   _initFileInput();
@@ -54,6 +57,22 @@ function _initMenuBars() {
       _handleAction(btn.dataset.action);
       menuItems.forEach(m => m.classList.remove('open'));
     });
+  });
+}
+
+function _initRightPanelToggle() {
+  const button = document.getElementById('btn-toggle-right-panel');
+  const panel = document.getElementById('right-panel');
+  const workspace = document.getElementById('workspace');
+  if (!button || !panel || !workspace) return;
+  button.addEventListener('click', () => {
+    const collapsed = workspace.classList.toggle('right-panel-collapsed');
+    panel.hidden = collapsed;
+    button.setAttribute('aria-expanded', String(!collapsed));
+    const label = collapsed ? 'Expandir panel derecho' : 'Contraer panel derecho';
+    button.setAttribute('aria-label', label);
+    button.title = label;
+    applyViewport(getState().viewport);
   });
 }
 
@@ -167,7 +186,7 @@ function _initPropertyInputs() {
     const el = getElementById(state.selectedElementIds[0]);
     if (!el || el.type !== 'connector') return;
     const before = snapshotElements();
-    el.connectorType = document.getElementById('prop-connector-type').value;
+    updateElement(el.id, { connectorType: document.getElementById('prop-connector-type').value });
     updateConnectorPath(el.id);
     const after = snapshotElements();
     commitAction({ type: 'snapshot', before, after });
@@ -180,7 +199,7 @@ function _initPropertyInputs() {
     const el = getElementById(state.selectedElementIds[0]);
     if (!el || el.type !== 'connector') return;
     _beginElementPropertyInput(el.id, 'connector.stroke');
-    el.style.stroke = document.getElementById('prop-conn-stroke').value;
+    updateElement(el.id, { style: { stroke: document.getElementById('prop-conn-stroke').value } });
     renderDocument(state.document);
     refreshSelection();
     _commitElementPropertyInput(commit);
@@ -190,8 +209,10 @@ function _initPropertyInputs() {
     if (state.selectedElementIds.length !== 1) return;
     const el = getElementById(state.selectedElementIds[0]);
     if (!el || el.type !== 'connector') return;
+    const strokeWidth = parseFloat(document.getElementById('prop-conn-stroke-width').value);
+    if (isNaN(strokeWidth)) return;
     _beginElementPropertyInput(el.id, 'connector.strokeWidth');
-    el.style.strokeWidth = parseFloat(document.getElementById('prop-conn-stroke-width').value);
+    updateElement(el.id, { style: { strokeWidth } });
     renderDocument(state.document);
     refreshSelection();
     _commitElementPropertyInput(commit);
@@ -202,7 +223,7 @@ function _initPropertyInputs() {
     const el = getElementById(state.selectedElementIds[0]);
     if (!el || el.type !== 'connector') return;
     const before = snapshotElements();
-    el.style.endMarker = document.getElementById('prop-conn-end-marker').value || null;
+    updateElement(el.id, { style: { endMarker: document.getElementById('prop-conn-end-marker').value || null } });
     const after = snapshotElements();
     commitAction({ type: 'snapshot', before, after });
     renderDocument(state.document);
@@ -214,7 +235,7 @@ function _initPropertyInputs() {
     const el = getElementById(state.selectedElementIds[0]);
     if (!el || el.type !== 'connector') return;
     const before = snapshotElements();
-    el.style.dashArray = document.getElementById('prop-conn-dash').value;
+    updateElement(el.id, { style: { dashArray: document.getElementById('prop-conn-dash').value } });
     const after = snapshotElements();
     commitAction({ type: 'snapshot', before, after });
     renderDocument(state.document);
@@ -227,7 +248,7 @@ function _initPropertyInputs() {
     const el = getElementById(state.selectedElementIds[0]);
     if (!el || el.type !== 'connector') return;
     _beginElementPropertyInput(el.id, 'connector.label');
-    el.label.value = document.getElementById('prop-conn-label').value;
+    updateElement(el.id, { label: { ...el.label, value: document.getElementById('prop-conn-label').value } });
     renderDocument(state.document);
     refreshSelection();
     _commitElementPropertyInput(commit);
@@ -345,6 +366,7 @@ function _handleFileDrop(files, e) {
 function _handleAction(action) {
   const state = getState();
   switch (action) {
+    case 'example-project': loadExampleProject(); break;
     case 'new':
       if (state.dirty && !confirm('Hay cambios sin guardar. Crear nuevo proyecto?')) break;
       resetDocument();
@@ -408,6 +430,21 @@ function _handleAction(action) {
   }
 }
 
+export function loadExampleProject() {
+  const state = getState();
+  if (state.dirty && !confirm('Hay cambios sin guardar. Cargar el proyecto de ejemplo?')) return;
+  loadDocument(createExampleDocument());
+  setActiveTool('select');
+  setDirty(true);
+  renderDocument(state.document);
+  _zoomToFit();
+  refreshSelection();
+  _updatePropertiesPanel();
+  _updateLayersPanel();
+  const nameInput = document.getElementById('doc-name');
+  if (nameInput) nameInput.value = state.document.name;
+}
+
 function _handleCopy() {
   copySelectedElements();
 }
@@ -426,7 +463,14 @@ function _handleDelete() {
   if (state.selectedElementIds.length === 0) return;
   const before = snapshotElements();
   const ids = [...state.selectedElementIds];
-  for (const id of ids) {
+  const idsToRemove = new Set(ids);
+  for (const element of state.document.elements) {
+    if (element.type !== 'connector') continue;
+    if (idsToRemove.has(element.source?.elementId) || idsToRemove.has(element.target?.elementId)) {
+      idsToRemove.add(element.id);
+    }
+  }
+  for (const id of idsToRemove) {
     removeElement(id);
   }
   clearSelection();
@@ -448,9 +492,9 @@ function _updatePropFromInput(prop, parser, commit = true) {
   if (isNaN(val)) return;
   _beginElementPropertyInput(el.id, prop);
   updateElement(el.id, { [prop]: val });
+  updateAllConns(el.id);
   renderDocument(state.document);
   refreshSelection();
-  updateAllConns(el.id);
   _commitElementPropertyInput(commit);
 }
 
@@ -473,9 +517,9 @@ function _updateRotationFromInput(commit) {
   }
 
   updateElement(el.id, { rotation: val });
+  updateAllConns(el.id);
   renderDocument(state.document);
   refreshSelection();
-  updateAllConns(el.id);
 
   if (!commit) return;
 
@@ -610,31 +654,32 @@ function _fillCanvasProps() {
 }
 
 function _fillShapeProps(el) {
-  _setVal('prop-x', Math.round(el.x || 0));
-  _setVal('prop-y', Math.round(el.y || 0));
-  _setVal('prop-w', Math.round(el.width || 0));
-  _setVal('prop-h', Math.round(el.height || 0));
-  _setVal('prop-layer', el.zIndex || 0);
-  _setVal('prop-rotation', el.rotation || 0);
+  _setVal('prop-x', Math.round(el.x ?? 0));
+  _setVal('prop-y', Math.round(el.y ?? 0));
+  _setVal('prop-w', Math.round(el.width ?? 0));
+  _setVal('prop-h', Math.round(el.height ?? 0));
+  _setVal('prop-layer', el.zIndex ?? 0);
+  _setVal('prop-rotation', el.rotation ?? 0);
   const rotLabel = document.getElementById('prop-rotation-val');
-  if (rotLabel) rotLabel.innerHTML = (el.rotation || 0) + '&deg;';
+  if (rotLabel) rotLabel.innerHTML = (el.rotation ?? 0) + '&deg;';
   const visualStyle = el.style || _getGroupSurfaceStyle(el);
   if (visualStyle) {
     _setVal('prop-fill', visualStyle.fill || '#ffffff');
     _setVal('prop-stroke', visualStyle.stroke || '#111827');
-    _setVal('prop-stroke-width', visualStyle.strokeWidth || 2);
-    _setVal('prop-opacity', visualStyle.opacity != null ? visualStyle.opacity : 1);
+    _setVal('prop-stroke-width', visualStyle.strokeWidth ?? 2);
+    const opacity = visualStyle.opacity ?? 1;
+    _setVal('prop-opacity', opacity);
     const opLabel = document.getElementById('prop-opacity-val');
-    if (opLabel) opLabel.textContent = Math.round((visualStyle.opacity || 1) * 100) + '%';
+    if (opLabel) opLabel.textContent = Math.round(opacity * 100) + '%';
     _setVal('prop-dash', visualStyle.dashArray || '');
   }
   if (el.text) {
     _setVal('prop-text', el.text.value || '');
     _setVal('prop-font-family', el.text.fontFamily || 'Inter, Arial, sans-serif');
-    _setVal('prop-font-size', el.text.fontSize || 16);
+    _setVal('prop-font-size', el.text.fontSize ?? 16);
     _setVal('prop-text-color', el.text.color || '#111827');
     _setVal('prop-text-align', el.text.align || 'center');
-    _setVal('prop-font-weight', el.text.fontWeight || 400);
+    _setVal('prop-font-weight', el.text.fontWeight ?? 400);
   }
   _fillSpecificCssNameOptions();
   _setVal('prop-css-class', getCssClassForElement(el));
@@ -676,10 +721,10 @@ function _fillSpecificCssNameOptions() {
 
 function _fillConnectorProps(el) {
   _setVal('prop-connector-type', el.connectorType || 'orthogonal');
-  _setVal('prop-conn-layer', el.zIndex || 0);
+  _setVal('prop-conn-layer', el.zIndex ?? 0);
   if (el.style) {
     _setVal('prop-conn-stroke', el.style.stroke || '#111827');
-    _setVal('prop-conn-stroke-width', el.style.strokeWidth || 2);
+    _setVal('prop-conn-stroke-width', el.style.strokeWidth ?? 2);
     _setVal('prop-conn-end-marker', el.style.endMarker || '');
     _setVal('prop-conn-dash', el.style.dashArray || '');
   }
@@ -915,12 +960,19 @@ function _alignElements(direction) {
   const bounds = getMultiSelectionBounds(selected);
   if (!bounds) return;
   const before = snapshotElements();
+  const updates = [];
   for (const el of selected) {
+    let x = el.x;
     switch (direction) {
-      case 'left': el.x = bounds.x; break;
-      case 'center': el.x = bounds.x + (bounds.width - el.width) / 2; break;
-      case 'right': el.x = bounds.right - el.width; break;
+      case 'left': x = bounds.x; break;
+      case 'center': x = bounds.x + (bounds.width - el.width) / 2; break;
+      case 'right': x = bounds.right - el.width; break;
     }
+    updates.push({ id: el.id, patch: { x } });
+  }
+  if (!updateElements(updates)) return;
+  for (const { id } of updates) {
+    updateAllConnectorsForElement(id);
   }
   const after = snapshotElements();
   commitAction({ type: 'snapshot', before, after });
@@ -933,6 +985,7 @@ function _distributeElements(dir) {
   const selected = getSelectedElements().filter(e => e.type !== 'connector');
   if (selected.length < 3) return;
   const before = snapshotElements();
+  const updates = [];
   if (dir === 'h') {
     selected.sort((a, b) => a.x - b.x);
     const totalW = selected.reduce((s, e) => s + e.width, 0);
@@ -940,7 +993,7 @@ function _distributeElements(dir) {
     const gap = (bounds.width - totalW) / (selected.length - 1);
     let cx = bounds.x;
     for (const el of selected) {
-      el.x = cx;
+      updates.push({ id: el.id, patch: { x: cx } });
       cx += el.width + gap;
     }
   } else {
@@ -950,9 +1003,13 @@ function _distributeElements(dir) {
     const gap = (bounds.height - totalH) / (selected.length - 1);
     let cy = bounds.y;
     for (const el of selected) {
-      el.y = cy;
+      updates.push({ id: el.id, patch: { y: cy } });
       cy += el.height + gap;
     }
+  }
+  if (!updateElements(updates)) return;
+  for (const { id } of updates) {
+    updateAllConnectorsForElement(id);
   }
   const after = snapshotElements();
   commitAction({ type: 'snapshot', before, after });

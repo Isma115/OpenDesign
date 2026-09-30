@@ -8,10 +8,15 @@
 }
 
 #workspace {
+  position: relative;
   display: grid;
   grid-template-columns: var(--toolbar-width) 1fr var(--right-panel-width);
   overflow: hidden;
   min-height: 0;
+}
+
+#workspace.right-panel-collapsed {
+  grid-template-columns: var(--toolbar-width) 1fr 0;
 }
 
 #canvas-wrapper {

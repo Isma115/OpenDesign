@@ -1,5 +1,5 @@
 // #region Atajos de teclado | Funcionalidad | manejo de eventos de teclado y acciones
-import { getState, setActiveTool, setSelection, clearSelection, getSelectedElements, getElementById, addElement, removeElement } from './state.js';
+import { getState, setActiveTool, setSelection, clearSelection, getSelectedElements, addElement, removeElement, updateElements } from './state.js';
 import { undo, redo, commitAction, snapshotElements } from './history.js';
 import { renderDocument, applyViewport } from './renderer.js';
 import { screenToCanvas } from './geometry.js';
@@ -7,6 +7,8 @@ import { refreshSelection } from './selection.js';
 import { createGroup } from './shapes.js';
 import { getMultiSelectionBounds } from './geometry.js';
 import { copySelectedElements, pasteClipboardElements } from './clipboard.js';
+import { updateAllConnectorsForElements } from './connectors.js';
+import { cancelActiveCanvasInteraction } from './tools.js';
 
 export function initKeyboard() {
   document.addEventListener('keydown', _onKeyDown);
@@ -15,8 +17,8 @@ export function initKeyboard() {
 
 function _onKeyDown(e) {
   const state = getState();
-  const tag = e.target.tagName.toLowerCase();
-  if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) {
+  const tag = e.target?.tagName?.toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable) {
     return;
   }
 
@@ -68,23 +70,35 @@ function _onKeyDown(e) {
   }
 
   switch (e.key.toLowerCase()) {
-    case 'v': setActiveTool('select'); _updateToolUI(); break;
-    case 'h': setActiveTool('hand'); _updateToolUI(); break;
-    case 'r': setActiveTool('rectangle'); _updateToolUI(); break;
-    case 'o': setActiveTool('ellipse'); _updateToolUI(); break;
-    case 't': setActiveTool('text'); _updateToolUI(); break;
-    case 'l': setActiveTool('line'); _updateToolUI(); break;
-    case 'c': setActiveTool('connector'); _updateToolUI(); break;
+    case '1':
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        _activateTool('select');
+      }
+      break;
+    case '2':
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        _activateTool('hand');
+      }
+      break;
+    case 'v': _activateTool('select'); break;
+    case 'h': _activateTool('hand'); break;
+    case 'r': _activateTool('rectangle'); break;
+    case 'o': _activateTool('ellipse'); break;
+    case 't': _activateTool('text'); break;
+    case 'l': _activateTool('line'); break;
+    case 'c': _activateTool('connector'); break;
     case 'delete':
     case 'backspace':
       e.preventDefault();
       _deleteSelected();
       break;
     case 'escape':
+      cancelActiveCanvasInteraction();
       clearSelection();
       refreshSelection();
-      setActiveTool('select');
-      _updateToolUI();
+      _activateTool('select');
       break;
     case '=':
     case '+':
@@ -118,6 +132,20 @@ function _onKeyDown(e) {
       _moveSelected(e.shiftKey ? 10 : 1, 0);
       break;
   }
+}
+
+function _activateTool(tool) {
+  cancelActiveCanvasInteraction();
+  if (_isConnectionTool(tool)) {
+    clearSelection();
+    refreshSelection();
+  }
+  setActiveTool(tool);
+  _updateToolUI();
+}
+
+function _isConnectionTool(tool) {
+  return ['line', 'arrow', 'connector'].includes(tool);
 }
 
 function _onKeyUp(e) {
@@ -208,17 +236,22 @@ function _moveSelected(dx, dy) {
   const selected = getSelectedElements();
   if (selected.length === 0) return;
   const before = snapshotElements();
+  const updates = [];
+  const connectedElementIds = [];
+
   for (const el of selected) {
     if (el.locked) continue;
     if (el.type === 'connector') {
-      if (el.points) {
-        el.points = el.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
-      }
+      continue;
     } else {
-      el.x += dx;
-      el.y += dy;
+      updates.push({ id: el.id, patch: { x: el.x + dx, y: el.y + dy } });
+      connectedElementIds.push(el.id);
     }
   }
+
+  if (!updateElements(updates)) return;
+  updateAllConnectorsForElements(connectedElementIds);
+
   const after = snapshotElements();
   commitAction({ type: 'snapshot', before, after });
   renderDocument(state.document);

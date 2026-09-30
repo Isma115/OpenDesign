@@ -2,8 +2,10 @@
 import { getState, getElementById, getSelectedElements, setSelection, clearSelection } from './state.js';
 import { getElementBounds, pointInElement, getMultiSelectionBounds, rectsIntersect } from './geometry.js';
 import { renderSelection, clearSelection as clearSelectionRender, clearGuides } from './renderer.js';
+import { getConnectionPoint, isConnectableElement } from './connectors.js';
 
 let _selectionBox = null;
+const MIN_LINEAR_HIT_RADIUS_PX = 12;
 
 export function initSelection() {}
 
@@ -69,7 +71,7 @@ export function endSelectionBox(startPoint, currentPoint) {
   const state = getState();
   const ids = [];
   for (const el of state.document.elements) {
-    if (!el.visible || el.type === 'connector') continue;
+    if (!el.visible || el.locked || el.type === 'connector' || _isGroupChild(el, state.document)) continue;
     const elBounds = getElementBounds(el);
     if (rectsIntersect(boxRect, elBounds)) {
       ids.push(el.id);
@@ -85,13 +87,17 @@ export function endSelectionBox(startPoint, currentPoint) {
 export function hitTest(point) {
   const state = getState();
   const sorted = [...state.document.elements]
-    .filter(e => e.visible)
+    .filter(e => e.visible && !_isGroupChild(e, state.document))
     .sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
 
   for (const el of sorted) {
     if (el.locked) continue;
     if (el.type === 'connector') {
-      if (_hitTestConnector(el, point)) return el.id;
+      if (_hitTestConnector(el, point, _getLinearHitRadius(el, state.viewport.zoom))) return el.id;
+      continue;
+    }
+    if (_isLinearShape(el)) {
+      if (_hitTestLine(el, point, _getLinearHitRadius(el, state.viewport.zoom))) return el.id;
       continue;
     }
     if (pointInElement(point, el)) return el.id;
@@ -99,14 +105,46 @@ export function hitTest(point) {
   return null;
 }
 
-function _hitTestConnector(connector, point) {
+function _isLinearShape(element) {
+  return element.shape === 'line' || element.shape === 'arrow';
+}
+
+function _isGroupChild(element, doc) {
+  return doc.elements.some(group => group.type === 'group' && group.children?.includes(element.id));
+}
+
+function _getLinearHitRadius(element, zoom) {
+  const safeZoom = Math.max(zoom || 1, 0.1);
+  const strokeWidth = Math.max(Number(element.style?.strokeWidth) || 1, 1);
+  const arrowHeadRadius = (element.shape === 'arrow' || element.style?.endMarker === 'arrow')
+    ? strokeWidth * 5
+    : 0;
+
+  return Math.max(MIN_LINEAR_HIT_RADIUS_PX / safeZoom, strokeWidth / 2, arrowHeadRadius);
+}
+
+function _hitTestLine(element, point, threshold) {
+  const line = element._lineData || {
+    x1: element.x,
+    y1: element.y,
+    x2: element.x + element.width,
+    y2: element.y + element.height
+  };
+
+  return _pointToSegmentDistance(
+    point,
+    { x: line.x1, y: line.y1 },
+    { x: line.x2, y: line.y2 }
+  ) <= threshold;
+}
+
+function _hitTestConnector(connector, point, threshold) {
   if (!connector.points || connector.points.length < 2) return false;
-  const threshold = 8;
   for (let i = 0; i < connector.points.length - 1; i++) {
     const p1 = connector.points[i];
     const p2 = connector.points[i + 1];
     const dist = _pointToSegmentDistance(point, p1, p2);
-    if (dist < threshold) return true;
+    if (dist <= threshold) return true;
   }
   return false;
 }
@@ -158,13 +196,12 @@ export function hitTestConnectionPoint(point) {
   const state = getState();
   const threshold = 10;
   for (const el of state.document.elements) {
-    if (!el.visible || el.type === 'connector' || !el.connectionPoints) continue;
-    const bounds = getElementBounds(el);
+    if (el.visible === false || !isConnectableElement(el)) continue;
     for (const cp of el.connectionPoints) {
-      const cpx = bounds.x + cp.x * bounds.width;
-      const cpy = bounds.y + cp.y * bounds.height;
-      if (Math.abs(point.x - cpx) < threshold && Math.abs(point.y - cpy) < threshold) {
-        return { elementId: el.id, pointId: cp.id, x: cpx, y: cpy };
+      const position = getConnectionPoint(el, cp.id);
+      if (!position) continue;
+      if (Math.hypot(point.x - position.x, point.y - position.y) < threshold) {
+        return { elementId: el.id, pointId: cp.id, x: position.x, y: position.y };
       }
     }
   }

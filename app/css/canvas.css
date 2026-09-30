@@ -1,6 +1,7 @@
 /* #region Lienzo SVG | Vista | estilos del area de dibujo y elementos */
 .grid-bg {
   pointer-events: none;
+  opacity: 0.35;
 }
 
 .grid-hidden .grid-bg {
@@ -9,6 +10,7 @@
 
 #canvas.tool-select { cursor: default; }
 #canvas.tool-hand { cursor: grab; }
+#canvas.tool-select.panning,
 #canvas.tool-hand.panning { cursor: grabbing; }
 #canvas.tool-rectangle,
 #canvas.tool-roundedRectangle,
@@ -130,7 +132,25 @@
   cursor: crosshair;
 }
 
+#canvas.tool-connector .connection-point,
+#canvas.tool-arrow .connection-point,
+#canvas.tool-line .connection-point,
+#canvas.connection-pending .connection-point,
 .connector-mode .connection-point {
+  opacity: 1;
+}
+
+.element-shape.connection-source .connection-point {
+  fill: var(--color-primary);
+  stroke: white;
+  stroke-width: 2;
+  opacity: 1;
+}
+
+.element-shape.connection-target .connection-point {
+  fill: #22c55e;
+  stroke: white;
+  stroke-width: 2;
   opacity: 1;
 }
 
@@ -153,7 +173,7 @@
   width: 100%;
   height: 100%;
   border: 2px solid var(--color-primary);
-  border-radius: 2px;
+  border-radius: 0;
   padding: 4px;
   font-family: inherit;
   resize: none;

@@ -163,3 +163,55 @@ export function rectsIntersect(r1, r2) {
   return !(r1.right < r2.x || r2.right < r1.x || r1.bottom < r2.y || r2.bottom < r1.y);
 }
 // #endregion
+
+// Punto local del contorno; la rotación se aplica al conectar o al dibujar el grupo SVG.
+export function getLocalConnectionPoint(element, connectionPoint) {
+  const dx = connectionPoint.x - 0.5;
+  const dy = connectionPoint.y - 0.5;
+  let scale = 1;
+  let vertices = null;
+  switch (element.shape) {
+    case 'triangle': vertices = [[0.5, 0], [1, 1], [0, 1]]; break;
+    case 'diamond':
+    case 'flow-decision': vertices = [[0.5, 0], [1, 0.5], [0.5, 1], [0, 0.5]]; break;
+    case 'flow-io': vertices = [[0.15, 0], [1, 0], [0.85, 1], [0, 1]]; break;
+    case 'pentagon':
+    case 'hexagon':
+    case 'star': {
+      const sides = element.shape === 'hexagon' ? 6 : 5;
+      const star = element.shape === 'star';
+      vertices = Array.from({ length: star ? sides * 2 : sides }, (_, i) => {
+        const angle = 2 * Math.PI * i / (star ? sides * 2 : sides) - Math.PI / 2;
+        const radius = star && i % 2 ? 0.2 : 0.5;
+        return [0.5 + radius * Math.cos(angle), 0.5 + radius * Math.sin(angle)];
+      });
+      break;
+    }
+    case 'ellipse':
+      if (dx || dy) scale = 0.5 / Math.hypot(dx, dy);
+      break;
+    case 'flow-document':
+      // El centro del borde inferior coincide con la unión de las dos curvas.
+      if (dx === 0 && dy > 0) scale = 0.76;
+      break;
+  }
+  if (vertices && (dx || dy)) {
+    let nearest = Infinity;
+    for (let i = 0; i < vertices.length; i++) {
+      const [ax, ay] = vertices[i];
+      const [bx, by] = vertices[(i + 1) % vertices.length];
+      const ex = bx - ax, ey = by - ay;
+      const denominator = dx * ey - dy * ex;
+      if (Math.abs(denominator) < 1e-10) continue;
+      const px = ax - 0.5, py = ay - 0.5;
+      const t = (px * ey - py * ex) / denominator;
+      const u = (px * dy - py * dx) / denominator;
+      if (t >= 0 && u >= -1e-10 && u <= 1 + 1e-10) nearest = Math.min(nearest, t);
+    }
+    if (Number.isFinite(nearest)) scale = nearest;
+  }
+  return {
+    x: element.x + (0.5 + dx * scale) * element.width,
+    y: element.y + (0.5 + dy * scale) * element.height
+  };
+}

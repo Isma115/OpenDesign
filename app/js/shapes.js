@@ -10,7 +10,7 @@ const DEFAULT_CONNECTION_POINTS = [
 
 // Paleta para modo claro
 const PALETTE_LIGHT = {
-  default: { fill: '#ffffff', stroke: '#111827', text: '#111827' },
+  default: { fill: '#dbeafe', stroke: '#111827', text: '#111827' },
   flowStart: { fill: '#dcfce7', stroke: '#16a34a', text: '#14532d' },
   flowProcess: { fill: '#dbeafe', stroke: '#2563eb', text: '#1e3a8a' },
   flowDecision: { fill: '#fef3c7', stroke: '#d97706', text: '#78350f' },
@@ -19,12 +19,12 @@ const PALETTE_LIGHT = {
   flowDocument: { fill: '#f0fdf4', stroke: '#15803d', text: '#14532d' },
   flowSubprocess: { fill: '#eff6ff', stroke: '#1d4ed8', text: '#1e3a8a' },
   note: { fill: '#fef9c3', stroke: '#eab308', text: '#713f12' },
-  frame: { fill: 'none', stroke: '#94a3b8', text: '#64748b' }
+  frame: { fill: 'none', stroke: '#475569', text: '#64748b' }
 };
 
 // Paleta para modo oscuro
 const PALETTE_DARK = {
-  default: { fill: '#1e293b', stroke: '#475569', text: '#f1f5f9' },
+  default: { fill: '#334155', stroke: '#94a3b8', text: '#f1f5f9' },
   flowStart: { fill: '#065f46', stroke: '#10b981', text: '#ecfdf5' },
   flowProcess: { fill: '#1e3a8a', stroke: '#3b82f6', text: '#eff6ff' },
   flowDecision: { fill: '#78350f', stroke: '#f59e0b', text: '#fffbeb' },
@@ -33,7 +33,7 @@ const PALETTE_DARK = {
   flowDocument: { fill: '#14532d', stroke: '#22c55e', text: '#f0fdf4' },
   flowSubprocess: { fill: '#1e3a8a', stroke: '#60a5fa', text: '#eff6ff' },
   note: { fill: '#713f12', stroke: '#eab308', text: '#fef9c3' },
-  frame: { fill: 'none', stroke: '#64748b', text: '#94a3b8' }
+  frame: { fill: 'none', stroke: '#94a3b8', text: '#94a3b8' }
 };
 
 function getPalette() {
@@ -61,6 +61,7 @@ const DEFAULT_TEXT = {
 };
 
 function _baseElement(overrides) {
+  const palette = getPalette().default;
   return {
     id: 'el_' + crypto.randomUUID().slice(0, 12),
     type: 'shape',
@@ -73,8 +74,8 @@ function _baseElement(overrides) {
     locked: false,
     visible: true,
     zIndex: getNextZIndex(),
-    style: { ...DEFAULT_STYLE },
-    text: { ...DEFAULT_TEXT },
+    style: { ...DEFAULT_STYLE, fill: palette.fill, stroke: palette.stroke },
+    text: { ...DEFAULT_TEXT, color: palette.text },
     connectionPoints: DEFAULT_CONNECTION_POINTS.map(p => ({ ...p })),
     ...overrides
   };
@@ -163,7 +164,7 @@ export function createLine(x1, y1, x2, y2) {
     x, y,
     width,
     height,
-    style: { ...DEFAULT_STYLE, fill: 'none' },
+    style: { ...DEFAULT_STYLE, fill: 'none', stroke: getPalette().default.stroke },
     _lineData: { x1, y1, x2, y2 }
   });
 }
@@ -171,7 +172,6 @@ export function createLine(x1, y1, x2, y2) {
 export function createArrow(x1, y1, x2, y2) {
   const el = createLine(x1, y1, x2, y2);
   el.shape = 'arrow';
-  el.style.stroke = '#111827';
   el.style.fill = 'none';
   return el;
 }
@@ -184,7 +184,7 @@ export function createText(x, y) {
     width: 200,
     height: 40,
     style: { ...DEFAULT_STYLE, fill: 'none', stroke: 'none', strokeWidth: 0 },
-    text: { ...DEFAULT_TEXT, value: 'Texto' }
+    text: { ...DEFAULT_TEXT, value: 'Texto', color: getPalette().default.text }
   });
 }
 
@@ -192,8 +192,8 @@ export function createImage(x, y, width, height, src) {
   return _baseElement({
     shape: 'image',
     x, y,
-    width: Math.max(width, 40),
-    height: Math.max(height, 40),
+    width: Math.max(width, 1),
+    height: Math.max(height, 1),
     style: { ...DEFAULT_STYLE, fill: 'none', stroke: 'none', strokeWidth: 0 },
     src: src || '',
     preserveAspectRatio: 'xMidYMid meet'
@@ -317,7 +317,7 @@ export function createConnector(source, target, connectorType = 'orthogonal') {
     target: { ...target },
     points: [],
     style: {
-      stroke: '#374151',
+      stroke: getPalette().default.stroke,
       strokeWidth: 2,
       dashArray: '',
       startMarker: null,
@@ -328,7 +328,7 @@ export function createConnector(source, target, connectorType = 'orthogonal') {
       x: 0,
       y: 0,
       fontSize: 14,
-      color: '#1f2937'
+      color: getPalette().default.text
     },
     locked: false,
     visible: true,

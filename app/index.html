@@ -29,6 +29,7 @@
           <div class="menu-dropdown" id="menu-file">
             <button data-action="new" aria-label="Nuevo proyecto">Nuevo</button>
             <button data-action="open" aria-label="Abrir archivo JSON">Abrir JSON</button>
+            <button data-action="example-project" aria-label="Cargar proyecto de ejemplo">Proyecto de Ejemplo</button>
             <hr>
             <button data-action="save" aria-label="Guardar localmente">Guardar</button>
             <button data-action="download-json" aria-label="Descargar JSON">Descargar JSON</button>
@@ -116,13 +117,13 @@
       <!-- #region Barra lateral izquierda | Sidebar | herramientas de dibujo -->
       <aside id="left-toolbar">
         <div class="tool-section">
-          <button class="tool-btn active" data-tool="select" aria-label="Seleccion" title="Seleccion (V)">
+          <button class="tool-btn active" data-tool="select" aria-label="Puntero" title="Puntero (1 o V)">
             <svg viewBox="0 0 24 24" width="20" height="20">
               <path d="M4 4l7 18 2.5-7.5L21 12z" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linejoin="round" />
             </svg>
           </button>
-          <button class="tool-btn" data-tool="hand" aria-label="Mano" title="Mano (H)">
+          <button class="tool-btn" data-tool="hand" aria-label="Arrastrar lienzo" title="Arrastrar lienzo (2 o H)">
             <svg viewBox="0 0 24 24" width="20" height="20">
               <path d="M18 11V6a2 2 0 00-4 0v1M14 7V4a2 2 0 00-4 0v6M10 5.5V4a2 2 0 00-4 0v8" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" />
@@ -186,19 +187,19 @@
         <div class="tool-divider"></div>
 
         <div class="tool-section">
-          <button class="tool-btn" data-tool="line" aria-label="Linea" title="Linea (L)">
+          <button class="tool-btn" data-tool="line" aria-label="Linea conectada" title="Linea conectada: clic en dos figuras; arrastra en vacio (L)">
             <svg viewBox="0 0 24 24" width="20" height="20">
               <line x1="4" y1="20" x2="20" y2="4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
             </svg>
           </button>
-          <button class="tool-btn" data-tool="arrow" aria-label="Flecha" title="Flecha">
+          <button class="tool-btn" data-tool="arrow" aria-label="Flecha conectada" title="Flecha conectada: clic en dos figuras; arrastra en vacio">
             <svg viewBox="0 0 24 24" width="20" height="20">
               <line x1="4" y1="20" x2="18" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
               <polyline points="12,6 18,6 18,12" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </button>
-          <button class="tool-btn" data-tool="connector" aria-label="Conector" title="Conector (C)">
+          <button class="tool-btn" data-tool="connector" aria-label="Conector ortogonal" title="Conector ortogonal: clic en origen y destino (C)">
             <svg viewBox="0 0 24 24" width="20" height="20">
               <path d="M4 12h6v-8h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                 stroke-linejoin="round" />
@@ -303,11 +304,11 @@
                 <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6"></path>
               </marker>
               <pattern id="grid-pattern" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" stroke-width="0.5" opacity="0.3" />
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#475569" stroke-width="0.5" opacity="0.12" />
               </pattern>
               <pattern id="grid-pattern-large" width="200" height="200" patternUnits="userSpaceOnUse">
                 <rect width="200" height="200" fill="url(#grid-pattern)" />
-                <path d="M 200 0 L 0 0 0 200" fill="none" stroke="#d1d5db" stroke-width="1" opacity="0.4" />
+                <path d="M 200 0 L 0 0 0 200" fill="none" stroke="#475569" stroke-width="1" opacity="0.2" />
               </pattern>
             </defs>
             <g id="grid-layer">
@@ -326,6 +327,12 @@
       <!-- #endregion -->
 
       <!-- #region Panel derecho | Panel | propiedades del elemento seleccionado -->
+      <button id="btn-toggle-right-panel" type="button" aria-controls="right-panel" aria-expanded="true"
+        aria-label="Contraer panel derecho" title="Contraer panel derecho">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="m9 6 6 6-6 6" />
+        </svg>
+      </button>
       <aside id="right-panel">
         <div id="panel-tabs">
           <button class="panel-tab active" data-tab="properties" aria-label="Propiedades">Propiedades</button>
