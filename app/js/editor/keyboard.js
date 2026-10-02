@@ -324,12 +324,15 @@ function _updateZoomUI(zoom) {
 
 function _updateToolUI() {
   const state = getState();
-  document.querySelectorAll('.tool-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tool === state.activeTool);
+  document.querySelectorAll('.tool-btn[data-tool], .component-item[data-component]').forEach(btn => {
+    const tool = btn.dataset.component ? `component:${btn.dataset.component}` : btn.dataset.tool;
+    const active = tool === state.activeTool;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
   });
   const canvas = document.getElementById('canvas');
   canvas.setAttribute('class', '');
-  canvas.classList.add(`tool-${state.activeTool}`);
+  canvas.classList.add(state.activeTool.startsWith('component:') ? 'tool-component' : `tool-${state.activeTool}`);
 }
 
 export function updateToolUI() { _updateToolUI(); }

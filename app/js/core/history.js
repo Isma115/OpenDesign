@@ -25,12 +25,6 @@ export function undo() {
 
   const action = state.history.past.pop();
   const currentSnapshot = snapshotElements();
-  state.history.future.push({
-    type: 'snapshot',
-    before: currentSnapshot,
-    after: action.before ? JSON.parse(JSON.stringify(action.before)) : currentSnapshot
-  });
-
   if (action.type === 'snapshot') {
     state.document.elements = JSON.parse(JSON.stringify(action.before));
   } else if (action.type === 'addElement') {
@@ -49,6 +43,12 @@ export function undo() {
       if (el) Object.assign(el, JSON.parse(JSON.stringify(change.before)));
     }
   }
+
+  state.history.future.push({
+    type: 'snapshot',
+    before: snapshotElements(),
+    after: currentSnapshot
+  });
 
   state.document.metadata.updatedAt = new Date().toISOString();
   setDirty(true);

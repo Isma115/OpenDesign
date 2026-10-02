@@ -4,13 +4,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GeoFlow Designer</title>
+  <title>Trazuvia</title>
+  <link rel="icon" type="image/png" href="icon.png">
 <link rel="stylesheet" href="css/base/reset.css">
 <link rel="stylesheet" href="css/layout/layout.css">
 <link rel="stylesheet" href="css/components/toolbar.css">
 <link rel="stylesheet" href="css/layout/canvas.css">
 <link rel="stylesheet" href="css/components/panels.css">
 <link rel="stylesheet" href="css/base/themes.css">
+<link rel="stylesheet" href="css/components/exit-dialog.css">
 </head>
 
 <body style="background-color: #000000; margin: 0; overflow: hidden;">
@@ -19,8 +21,8 @@
     <!-- #region Barra superior | Panel | acciones rapidas -->
     <header id="topbar">
       <div class="brand">
-        <span class="brand-icon">&#9670;</span>
-        <span class="brand-text">GeoFlow Designer</span>
+        <img class="brand-icon" src="icon.png" alt="" aria-hidden="true">
+        <span class="brand-text">Trazuvia</span>
       </div>
 
       <div class="topbar-center">
@@ -66,6 +68,7 @@
         <div class="tool-section">
           <details class="tool-collection">
             <summary class="tool-btn tool-collection-toggle" aria-label="Polígonos básicos" title="Polígonos básicos">
+              <span class="tool-collection-title">Polígonos básicos</span>
               <svg viewBox="0 0 24 24" width="20" height="20">
                 <circle cx="4.5" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
                 <rect x="9" y="9" width="6" height="6" fill="none" stroke="currentColor" stroke-width="1.8" />
@@ -129,6 +132,7 @@
         <div class="tool-section">
           <details class="tool-collection">
             <summary class="tool-btn tool-collection-toggle" aria-label="Diagramas de flujo" title="Diagramas de flujo">
+              <span class="tool-collection-title">Diagramas de flujo</span>
               <svg viewBox="0 0 24 24" width="20" height="20">
                 <rect x="2" y="2" width="7" height="5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7" />
                 <rect x="2" y="17" width="7" height="5" fill="none" stroke="currentColor" stroke-width="1.7" />
@@ -205,6 +209,7 @@
         <div class="tool-section">
           <details class="tool-collection">
             <summary class="tool-btn tool-collection-toggle" aria-label="UI software" title="UI software">
+              <span class="tool-collection-title">UI software</span>
               <svg viewBox="0 0 24 24" width="20" height="20">
                 <rect x="2" y="3" width="20" height="5" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" />
                 <line x1="5" y1="5.5" x2="13" y2="5.5" stroke="currentColor" stroke-width="1.4" />
@@ -346,6 +351,7 @@
         <div class="tool-section">
           <details class="tool-collection">
             <summary class="tool-btn tool-collection-toggle" aria-label="Bases de datos" title="Bases de datos">
+              <span class="tool-collection-title">Bases de datos</span>
               <svg viewBox="0 0 24 24" width="20" height="20">
                 <ellipse cx="12" cy="5" rx="8" ry="2.5" fill="none" stroke="currentColor" stroke-width="1.8" />
                 <path d="M4 5v6c0 1.4 3.58 2.5 8 2.5s8-1.1 8-2.5V5M4 11v6c0 1.4 3.58 2.5 8 2.5s8-1.1 8-2.5v-6" fill="none"
@@ -360,6 +366,47 @@
                   <path d="M4 6v12c0 1.66 3.58 3 8 3s8-1.34 8-3V6" fill="none" stroke="currentColor" stroke-width="2" />
                 </svg>
               </button>
+              <button class="component-item" data-component="db-table" draggable="true" aria-label="Tabla" title="Arrastrar tabla al lienzo">
+                <svg class="component-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" />
+                  <path d="M3 8h18M3 13h18M3 17h18M9 8v13" fill="none" stroke="currentColor" stroke-width="1.5" />
+                </svg>
+              </button>
+              <button class="component-item" data-component="db-view" draggable="true" aria-label="Vista" title="Arrastrar vista al lienzo">
+                <svg class="component-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="1.8" />
+                  <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
+                </svg>
+              </button>
+              <button class="component-item" data-component="db-primary-key" draggable="true" aria-label="Clave primaria" title="Arrastrar clave primaria al lienzo">
+                <svg class="component-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="7" cy="9" r="4" fill="none" stroke="currentColor" stroke-width="1.8" />
+                  <path d="m10 12 9 9h3v-3h-3v-3h-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                </svg>
+              </button>
+              <button class="component-item" data-component="db-foreign-key" draggable="true" aria-label="Clave foránea" title="Arrastrar clave foránea al lienzo">
+                <svg class="component-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="6" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
+                  <path d="m8 10 5 5h3v-3M3 20h17m-4-4 4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                </svg>
+              </button>
+              <button class="component-item" data-component="db-index" draggable="true" aria-label="Índice" title="Arrastrar índice al lienzo">
+                <svg class="component-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 5h12M9 12h12M9 19h12M3 5h2M3 12h2M3 19h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+              </button>
+              <button class="component-item" data-component="db-query" draggable="true" aria-label="Consulta SQL" title="Arrastrar consulta SQL al lienzo">
+                <svg class="component-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 3h11l5 5v13H4zM15 3v5h5M9 11l-3 3 3 3M15 11l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
+                </svg>
+              </button>
+              <button class="tool-btn" data-tool="connector" aria-label="Relación" title="Conectar dos elementos de base de datos">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                  <rect x="2" y="3" width="6" height="6" fill="none" stroke="currentColor" stroke-width="1.8" />
+                  <rect x="16" y="15" width="6" height="6" fill="none" stroke="currentColor" stroke-width="1.8" />
+                  <path d="M8 6h4v12h4" fill="none" stroke="currentColor" stroke-width="1.8" />
+                </svg>
+              </button>
             </div>
           </details>
         </div>
@@ -370,6 +417,9 @@
       <!-- #endregion -->
 
       <!-- #region Lienzo central | Vista | area principal de dibujo SVG -->
+      <div id="left-panel-resize-handle" role="separator" aria-orientation="vertical" aria-valuemin="56"
+        aria-valuemax="320" aria-valuenow="160" aria-label="Ajustar ancho del panel izquierdo" tabindex="0"
+        title="Arrastrar hacia la derecha para ampliar las herramientas"></div>
       <section id="canvas-wrapper">
         <div id="rulers">
           <canvas id="ruler-h" height="20"></canvas>
@@ -422,9 +472,18 @@
       </button>
       <aside id="right-panel">
         <div id="panel-tabs">
-          <button class="panel-tab active" data-tab="properties" aria-label="Propiedades">Propiedades</button>
-          <button class="panel-tab" data-tab="layers" aria-label="Capas">Capas</button>
-          <button class="panel-tab" data-tab="components" aria-label="Componentes">Componentes</button>
+          <button class="panel-tab active" data-tab="properties" aria-label="Propiedades" title="Propiedades">
+            <svg class="panel-tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></svg>
+            <span class="panel-tab-label">Propiedades</span>
+          </button>
+          <button class="panel-tab" data-tab="layers" aria-label="Capas" title="Capas">
+            <svg class="panel-tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"/></svg>
+            <span class="panel-tab-label">Capas</span>
+          </button>
+          <button class="panel-tab" data-tab="components" aria-label="Componentes" title="Componentes">
+            <svg class="panel-tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            <span class="panel-tab-label">Componentes</span>
+          </button>
         </div>
 
         <div id="panel-content">
@@ -565,7 +624,7 @@
               <h3 class="panel-title">CSS HTML</h3>
               <div class="prop-group">
                 <label>Nombre CSS especifico</label>
-                <input type="text" id="prop-css-class" list="component-css-names" placeholder="gf-button">
+                <input type="text" id="prop-css-class" list="component-css-names" placeholder="trazuvia-button">
                 <datalist id="component-css-names"></datalist>
               </div>
               <div class="prop-group">
@@ -638,6 +697,7 @@
           </div>
 
           <div id="tab-layers" class="tab-content" style="display:none">
+            <div class="layers-actions"><button type="button" id="btn-add-layer-collection">+ Nueva agrupación</button></div>
             <div id="layers-list" class="layers-list"></div>
           </div>
 
@@ -712,9 +772,23 @@
 
   </div>
 
-  <input type="file" id="file-input" accept=".json,.geoflow.json" style="display:none">
+  <input type="file" id="file-input" accept=".json,.trazuvia.json,.geoflow.json" style="display:none">
 
   <script type="module" src="js/main.js"></script>
+  <dialog id="exit-dialog" aria-labelledby="exit-title" aria-describedby="exit-description">
+    <form method="dialog">
+      <div class="exit-heading">
+        <img src="icon.png" width="40" height="40" alt="">
+        <div><p class="exit-app-name">Trazuvia</p><h2 id="exit-title">¿Salir de la aplicación?</h2></div>
+      </div>
+      <p id="exit-description">Puedes cancelar para seguir trabajando en tu diseño.</p>
+      <p id="exit-error" role="alert" hidden>No se pudo guardar el diseño. Cancela y exporta tu proyecto antes de salir.</p>
+      <div class="exit-actions">
+        <button value="cancel" autofocus>Cancelar</button>
+        <button value="exit" class="exit-confirm">Salir</button>
+      </div>
+    </form>
+  </dialog>
 </body>
 
 </html>

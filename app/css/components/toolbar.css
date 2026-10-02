@@ -34,6 +34,7 @@
 
 .topbar-center {
   flex: 1;
+  min-width: 0;
   display: flex;
   justify-content: center;
 }
@@ -42,11 +43,15 @@
   text-align: center;
   border: 1px solid transparent;
   background: var(--color-control);
-  padding: 7px 12px;
+  padding: 5px 12px;
   font-weight: 500;
   border-radius: 0;
   font-size: 13px;
-  width: 240px;
+  width: min(100%, 600px);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   transition: border-color 0.15s, background 0.15s;
 }
 
@@ -55,6 +60,7 @@
 }
 
 #doc-name:focus {
+  text-overflow: clip;
   outline: none;
   border-color: var(--color-primary);
   background: var(--color-surface);
@@ -102,6 +108,8 @@
 
 /* #region Barra lateral izquierda | Sidebar | herramientas de dibujo */
 #left-toolbar {
+  container-type: inline-size;
+  container-name: left-tools;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -125,9 +133,11 @@
 
 .tool-section {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: calc(100% - 16px);
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .tool-btn {
@@ -160,30 +170,139 @@
 }
 
 .tool-collection {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  width: 100%;
 }
 
 .tool-collection > summary {
+  position: relative;
   list-style: none;
+  margin: 0 auto;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  background: var(--color-control);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.tool-collection > summary:hover {
+  color: var(--color-primary);
+  background: var(--color-accent-soft);
+  border-color: var(--color-primary);
+}
+
+.tool-collection > summary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.tool-collection > summary:active {
+  box-shadow: inset 0 0 0 1px var(--color-primary);
 }
 
 .tool-collection > summary::-webkit-details-marker {
   display: none;
 }
 
+.tool-collection-title {
+  display: none;
+}
+
+.tool-collection-toggle::after {
+  content: '';
+  position: absolute;
+  right: 4px;
+  bottom: 5px;
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.16s ease;
+}
+
+.tool-collection[open] > .tool-collection-toggle::after {
+  transform: rotate(45deg);
+}
+
+.tool-collection:has(.tool-btn.active, .component-item.active) > summary {
+  color: var(--color-primary);
+  box-shadow: inset 2px 0 var(--color-primary);
+}
+
+@container left-tools (min-width: 120px) {
+  .tool-collection > .tool-collection-toggle {
+    width: 100%;
+    height: auto;
+    min-height: 36px;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 8px 6px;
+    text-align: left;
+  }
+
+  .tool-collection-toggle > svg {
+    order: -1;
+    flex-shrink: 0;
+  }
+
+  .tool-collection-title {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .tool-collection-toggle::after {
+    position: static;
+    flex-shrink: 0;
+    margin-right: 3px;
+  }
+
+  .tool-collection[open] {
+    background: var(--color-control);
+    box-shadow: inset 0 0 0 1px var(--color-border);
+  }
+
+  .tool-collection-items {
+    padding: 10px 6px;
+  }
+
+  .tool-divider {
+    width: calc(100% - 24px);
+    margin: 3px 0;
+  }
+}
+
 .tool-collection[open] > .tool-collection-toggle {
   color: var(--color-primary);
-  background: var(--color-hover);
+  background: var(--color-accent-soft);
+  border-color: var(--color-primary);
 }
 
 .tool-collection-items {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, 40px);
+  justify-content: center;
   gap: 4px;
-  padding-top: 2px;
+  padding-top: 8px;
+  padding-bottom: 6px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tool-collection[open] > .tool-collection-items {
+    animation: reveal-tools 0.16s ease-out;
+  }
+
+  @keyframes reveal-tools {
+    from { opacity: 0; transform: translateY(-3px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tool-collection > summary,
+  .tool-collection-toggle::after { transition: none; }
 }
 
 #left-toolbar .tool-collection-items .component-item {
@@ -201,10 +320,92 @@
   background: var(--color-hover);
 }
 
+#left-toolbar .tool-collection-items .component-item.active {
+  color: var(--color-primary);
+  background: var(--color-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
 #left-toolbar .tool-collection-items .component-icon {
   width: 20px;
   height: 20px;
   overflow: visible;
   color: currentColor;
 }
+
+@container left-tools (min-width: 200px) {
+  .tool-collection-items {
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 6px;
+    padding: 10px 8px;
+  }
+
+  #left-toolbar .tool-collection-items > .tool-btn,
+  #left-toolbar .tool-collection-items > .component-item {
+    width: 100%;
+    min-width: 0;
+    align-self: stretch;
+    height: auto;
+    min-height: 68px;
+    padding: 10px 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    background: var(--color-surface);
+    box-shadow: inset 0 0 0 1px var(--color-border);
+  }
+
+  #left-toolbar .tool-collection-items > button::after {
+    content: attr(aria-label);
+    font-size: 11px;
+    line-height: 1.3;
+    text-align: center;
+    max-width: 100%;
+    overflow-wrap: normal;
+  }
+
+  #left-toolbar .tool-collection-items > .tool-btn:hover,
+  #left-toolbar .tool-collection-items > .component-item:hover {
+    background: var(--color-hover);
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+  }
+
+  #left-toolbar .tool-collection-items > .tool-btn.active,
+  #left-toolbar .tool-collection-items > .component-item.active {
+    background: var(--color-accent-soft);
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+  }
+}
 /* #endregion */
+
+#left-panel-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--toolbar-width) - 4px);
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 51;
+}
+
+#left-panel-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+}
+
+#left-panel-resize-handle:hover::after,
+#left-panel-resize-handle:focus-visible::after,
+.left-panel-resizing #left-panel-resize-handle::after {
+  background: var(--color-primary);
+}
+
+.left-panel-resizing, .left-panel-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}

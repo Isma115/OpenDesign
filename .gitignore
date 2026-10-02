@@ -28,6 +28,7 @@ release/
 out/
 
 # Datos de aplicación guardados localmente
+*.trazuvia.json
 *.geoflow.json
 
 # Archivos de Electron

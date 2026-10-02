@@ -29,6 +29,7 @@
 #canvas.tool-flow-document,
 #canvas.tool-flow-subprocess { cursor: crosshair; }
 #canvas.tool-text { cursor: text; }
+#canvas.tool-component { cursor: crosshair; }
 #canvas.tool-line,
 #canvas.tool-arrow,
 #canvas.tool-connector { cursor: crosshair; }

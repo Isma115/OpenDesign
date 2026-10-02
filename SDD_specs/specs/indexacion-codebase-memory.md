@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart TD
-    A[Repositorio OpenDesign] --> B[Descubrir archivos y Git]
+    A[Repositorio Trazuvia] --> B[Descubrir archivos y Git]
     B --> C{¿Archivo excluido?}
     C -->|Sí: .git, node_modules, logs o .DS_Store| D[Registrar como omitido]
     C -->|No| E[Analizar declaraciones y relaciones]

@@ -3,7 +3,7 @@ import { getState, loadDocument, setDirty, updateDocument } from '../core/state.
 import { renderDocument } from '../editor/renderer.js';
 import { refreshSelection } from '../editor/selection.js';
 
-const STORAGE_KEY = 'geoflow_autosave';
+const STORAGE_KEY = 'trazuvia_autosave';
 
 export function saveToLocal() {
   const state = getState();
@@ -57,7 +57,7 @@ export function downloadJSON() {
   const a = document.createElement('a');
   a.href = url;
   const name = state.document.name || 'design';
-  a.download = `${name}.geoflow.json`;
+  a.download = `${name}.trazuvia.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -93,7 +93,7 @@ function handleFileContent(content) {
   try {
     const doc = JSON.parse(content);
     if (!_validateDocument(doc)) {
-      alert('Archivo JSON invalido. Verifica que sea un archivo GeoFlow valido.');
+      alert('Archivo JSON invalido. Verifica que sea un archivo Trazuvia valido.');
       return;
     }
     loadDocument(doc);

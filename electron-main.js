@@ -3,15 +3,58 @@ const { app, BrowserWindow, Menu, dialog, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
+app.setName('Trazuvia');
+if (process.platform === 'win32') app.setAppUserModelId('com.trazuvia.designer');
+
+// Copiar el perfil anterior una sola vez mantiene el autoguardado y las preferencias.
+const profilePath = app.getPath('userData');
+if (!fs.existsSync(profilePath)) {
+  for (const legacyName of ['geoflow-designer', 'GeoFlow Designer']) {
+    const legacyPath = path.join(app.getPath('appData'), legacyName);
+    if (!fs.existsSync(legacyPath)) continue;
+    try { fs.cpSync(legacyPath, profilePath, { recursive: true }); }
+    catch (error) { console.error('No se pudo migrar el perfil anterior:', error); }
+    break;
+  }
+}
+
 let mainWindow;
+let exitConfirmed = false;
+let exitPending = false;
+
+function requestExit() {
+  if (exitPending) return;
+  exitPending = true;
+  mainWindow.show();
+  mainWindow.focus();
+  mainWindow.webContents.send('confirm-exit');
+}
+
+app.on('before-quit', event => {
+  if (exitConfirmed || !mainWindow) return;
+  event.preventDefault();
+  requestExit();
+});
+
+ipcMain.on('exit-response', (event, confirmed) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents || !exitPending) return;
+  exitPending = false;
+  if (confirmed !== true) {
+    return;
+  }
+  exitConfirmed = true;
+  app.quit();
+});
 
 function createWindow() {
+  exitConfirmed = false;
+  if (process.platform === 'darwin') app.dock.setIcon(path.join(__dirname, 'app', 'icon.png'));
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 800,
     minHeight: 600,
-    title: 'GeoFlow Designer',
+    title: 'Trazuvia',
     show: false,
     fullscreen: false,
     backgroundColor: '#000000',
@@ -118,57 +161,21 @@ function createWindow() {
         { role: 'togglefullscreen' }
       ]
     },
-    {
-      label: 'Organizar',
-      submenu: [
-        { label: 'Traer al frente', click: sendAction('bring-front') },
-        { label: 'Enviar al fondo', click: sendAction('send-back') },
-        { label: 'Adelantar', click: sendAction('bring-forward') },
-        { label: 'Atrasar', click: sendAction('send-backward') },
-        { type: 'separator' },
-        { label: 'Alinear izquierda', click: sendAction('align-left') },
-        { label: 'Alinear centro', click: sendAction('align-center') },
-        { label: 'Alinear derecha', click: sendAction('align-right') },
-        { type: 'separator' },
-        { label: 'Distribuir horizontal', click: sendAction('distribute-h') },
-        { label: 'Distribuir vertical', click: sendAction('distribute-v') },
-        { type: 'separator' },
-        { label: 'Agrupar', accelerator: 'CmdOrCtrl+G', click: sendAction('group') },
-        { label: 'Desagrupar', accelerator: 'CmdOrCtrl+Shift+G', click: sendAction('ungroup') }
-      ]
-    },
-    { role: 'windowMenu', label: 'Ventana' },
-    {
-      label: 'Desarrollo',
-      submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' }
-      ]
-    },
-    {
-      label: 'Ayuda',
-      submenu: [
-        {
-          label: 'Acerca de GeoFlow Designer',
-          click: () => {
-            dialog.showMessageBox(mainWindow, {
-              type: 'info',
-              title: 'GeoFlow Designer',
-              message: 'GeoFlow Designer v1.0.0',
-              detail: 'Aplicación de escritorio para diseño de interfaces y diagramas de flujo.'
-            });
-          }
-        }
-      ]
-    }
+
   ];
 
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
 
+  mainWindow.on('close', event => {
+    if (exitConfirmed) return;
+    event.preventDefault();
+    requestExit();
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
+    exitPending = false;
   });
 }
 
@@ -176,7 +183,7 @@ function createWindow() {
 ipcMain.handle('dialog-open-file', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     filters: [
-      { name: 'GeoFlow Files', extensions: ['json', 'geoflow.json'] },
+      { name: 'Trazuvia Files', extensions: ['json', 'trazuvia.json'] },
       { name: 'All Files', extensions: ['*'] }
     ],
     properties: ['openFile']
@@ -197,10 +204,10 @@ ipcMain.handle('dialog-open-file', async () => {
 ipcMain.handle('dialog-save-file', async (event, content) => {
   const result = await dialog.showSaveDialog(mainWindow, {
     filters: [
-      { name: 'GeoFlow Files', extensions: ['json'] },
+      { name: 'Trazuvia Files', extensions: ['json'] },
       { name: 'All Files', extensions: ['*'] }
     ],
-    defaultPath: 'design.geoflow.json'
+    defaultPath: 'design.trazuvia.json'
   });
 
   if (result.canceled) {

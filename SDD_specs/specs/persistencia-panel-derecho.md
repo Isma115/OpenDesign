@@ -2,7 +2,7 @@
 
 ```mermaid
 flowchart LR
-    A[Inicio de la aplicación] --> B[Leer geoflow_right_panel_width]
+    A[Inicio de la aplicación] --> B[Leer trazuvia_right_panel_width]
     B --> C{¿Hay un ancho válido?}
     C -->|Sí| D[Aplicar variable CSS y actualizar aria-valuenow]
     C -->|No| E[Usar ancho CSS por defecto]

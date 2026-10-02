@@ -18,9 +18,9 @@
   --color-secondary: #27766f;
   --color-secondary-soft: #d2e5df;
   --shadow-soft: 0 2px 8px rgba(20, 35, 65, 0.06);
-  --toolbar-width: 56px;
+  --toolbar-width: 160px;
   --right-panel-width: 260px;
-  --topbar-height: 56px;
+  --topbar-height: 44px;
   --statusbar-height: 30px;
 }
 

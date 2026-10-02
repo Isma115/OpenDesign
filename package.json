@@ -1,11 +1,11 @@
 {
-  "name": "geoflow-designer",
+  "name": "trazuvia",
   "version": "1.0.0",
   "description": "Aplicación de escritorio para diseño de interfaces y diagramas de flujo",
   "main": "electron-main.js",
   "scripts": {
-    "start": "electron .",
-    "dev": "electron . --dev",
+    "start": "node scripts/start-electron.cjs",
+    "dev": "node scripts/start-electron.cjs --dev",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "build:mac": "electron-builder --mac",
@@ -17,7 +17,7 @@
     "diagram",
     "wireframe"
   ],
-  "author": "GeoFlow",
+  "author": "Trazuvia",
   "license": "MIT",
   "devDependencies": {
     "electron": "^41.7.1",
@@ -25,8 +25,9 @@
     "puppeteer": "^24.43.1"
   },
   "build": {
-    "appId": "com.geoflow.designer",
-    "productName": "GeoFlow Designer",
+    "appId": "com.trazuvia.designer",
+    "productName": "Trazuvia",
+    "icon": "app/icon.png",
     "directories": {
       "output": "dist"
     },
@@ -36,8 +37,7 @@
       "app/**/*"
     ],
     "win": {
-      "target": ["portable"],
-      "signAndEditExecutable": false
+      "target": ["portable"]
     },
     "mac": {
       "target": ["dmg"]

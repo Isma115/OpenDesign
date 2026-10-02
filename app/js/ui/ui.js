@@ -9,9 +9,10 @@ import { getShapeDisplayName, createGroup, createImage } from '../model/shapes.j
 import { zoomBy, setZoom, updateToolUI } from '../editor/keyboard.js';
 import { getElementBounds, getMultiSelectionBounds, screenToCanvas } from '../core/geometry.js';
 import { updateConnectorPath, updateAllConnectorsForElement } from '../model/connectors.js';
-import { createComponentGroup, getPendingChildren } from '../model/components.js';
+import { cancelActiveCanvasInteraction, placeComponent } from '../editor/tools.js';
 import { toggleTheme } from './theme.js';
 import { createExampleDocument } from '../model/example.js';
+import { createLayerCollection, moveLayerToCollection } from '../model/layer-collections.js';
 import { loadDocument, setDirty } from '../core/state.js';
 import { copySelectedElements, pasteClipboardElements } from '../io/clipboard.js';
 import {
@@ -24,17 +25,26 @@ let _rotationInputElementId = null;
 let _specificCssInputSnapshot = null;
 let _elementPropertyInputSnapshot = null;
 let _elementPropertyInputKey = null;
-const RIGHT_PANEL_WIDTH_KEY = 'geoflow_right_panel_width';
+const RIGHT_PANEL_WIDTH_KEY = 'trazuvia_right_panel_width';
 
 export function initUI() {
   _initPanelTabs();
   _initRightPanelToggle();
   _initRightPanelResize();
+  _initLeftPanelResize();
   _initPropertyInputs();
   _initTopbarActions();
   _initFileInput();
   _initComponentDrag();
   _initDocName();
+  document.getElementById('btn-add-layer-collection')?.addEventListener('click', () => {
+    updateDocument(doc => createLayerCollection(doc));
+    _updateLayersPanel();
+    const inputs = document.querySelectorAll('.layer-collection-name');
+    const input = inputs[inputs.length - 1];
+    input?.focus();
+    input?.select();
+  });
   _updatePropertiesPanel();
 }
 
@@ -127,6 +137,64 @@ function _initRightPanelResize() {
     setWidth(nextWidth);
     persistWidth();
   });
+}
+
+function _initLeftPanelResize() {
+  const handle = document.getElementById('left-panel-resize-handle');
+  const panel = document.getElementById('left-toolbar');
+  const workspace = document.getElementById('workspace');
+  if (!handle || !panel || !workspace) return;
+  const key = 'trazuvia_left_panel_width';
+  let pointerId = null;
+  let startX = 0;
+  let startWidth = 0;
+  const setWidth = width => {
+    const rightWidth = document.getElementById('right-panel')?.getBoundingClientRect().width || 0;
+    const max = Math.max(56, Math.min(320, workspace.clientWidth - rightWidth - 320));
+    const next = Math.round(Math.min(max, Math.max(56, width)));
+    document.documentElement.style.setProperty('--toolbar-width', `${next}px`);
+    handle.setAttribute('aria-valuenow', String(next));
+    handle.setAttribute('aria-valuemax', String(max));
+    applyViewport(getState().viewport);
+  };
+  const persist = () => localStorage.setItem(key, handle.getAttribute('aria-valuenow'));
+  const saved = Number.parseInt(localStorage.getItem(key), 10);
+  setWidth(Number.isFinite(saved) ? saved : panel.getBoundingClientRect().width);
+  handle.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    pointerId = e.pointerId;
+    startX = e.clientX;
+    startWidth = panel.getBoundingClientRect().width;
+    handle.setPointerCapture(pointerId);
+    workspace.classList.add('left-panel-resizing');
+    e.preventDefault();
+  });
+  handle.addEventListener('pointermove', e => {
+    if (e.pointerId === pointerId) setWidth(startWidth + e.clientX - startX);
+  });
+  const stop = e => {
+    if (e.pointerId !== pointerId) return;
+    pointerId = null;
+    workspace.classList.remove('left-panel-resizing');
+    persist();
+    if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
+  };
+  handle.addEventListener('pointerup', stop);
+  handle.addEventListener('pointercancel', stop);
+  handle.addEventListener('lostpointercapture', () => {
+    if (pointerId !== null) persist();
+    pointerId = null;
+    workspace.classList.remove('left-panel-resizing');
+  });
+  handle.addEventListener('keydown', e => {
+    const current = panel.getBoundingClientRect().width;
+    const width = { ArrowRight: current + 10, ArrowLeft: current - 10, Home: 56, End: 320 }[e.key];
+    if (width === undefined) return;
+    e.preventDefault();
+    setWidth(width);
+    persist();
+  });
+  window.addEventListener('resize', () => setWidth(panel.getBoundingClientRect().width));
 }
 
 function _initPanelTabs() {
@@ -362,6 +430,8 @@ function _initFileInput() {
 function _initComponentDrag() {
   document.querySelectorAll('.component-item').forEach(item => {
     item.addEventListener('dragstart', (e) => {
+      cancelActiveCanvasInteraction();
+      setActiveTool('select');
       e.dataTransfer.setData('text/plain', item.dataset.component);
       e.dataTransfer.effectAllowed = 'copy';
     });
@@ -384,7 +454,8 @@ function _initComponentDrag() {
       if (!compType) return;
       const state = getState();
       const point = screenToCanvas(e.clientX, e.clientY, state.viewport);
-      _dropComponent(compType, point.x, point.y);
+      cancelActiveCanvasInteraction();
+      placeComponent(compType, point.x, point.y);
     });
   }
 }
@@ -969,9 +1040,70 @@ function _updateLayersPanel() {
   if (!list) return;
   list.innerHTML = '';
   const sorted = [...state.document.elements].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
+  const collections = state.document.layerCollections || [];
+  const containers = new Map();
+  const enableDrop = (container, collectionId) => {
+    container.addEventListener('dragover', e => {
+      if (!Array.from(e.dataTransfer.types).includes('application/x-trazuvia-layer')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+      container.classList.add('layer-drop-target');
+    });
+    container.addEventListener('dragleave', e => {
+      if (!container.contains(e.relatedTarget)) container.classList.remove('layer-drop-target');
+    });
+    container.addEventListener('drop', e => {
+      const id = e.dataTransfer.getData('application/x-trazuvia-layer');
+      if (!id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      updateDocument(doc => moveLayerToCollection(doc, id, collectionId));
+      _updateLayersPanel();
+    });
+  };
+  for (const collection of collections) {
+    const section = document.createElement('details');
+    section.className = 'layer-collection';
+    section.open = !collection.collapsed;
+    section.innerHTML = `<summary><input class="layer-collection-name" aria-label="Nombre de la agrupación" value="${_escapeAttribute(collection.name)}"><button type="button" class="layer-collection-remove" aria-label="Eliminar agrupación" title="Eliminar agrupación sin borrar capas">×</button></summary><div class="layer-collection-items"></div>`;
+    const input = section.querySelector('input');
+    input.addEventListener('click', e => e.stopPropagation());
+    input.addEventListener('keydown', e => e.stopPropagation());
+    input.addEventListener('change', () => {
+      updateDocument(() => { collection.name = input.value.trim() || 'Agrupación'; });
+      input.value = collection.name;
+    });
+    section.querySelector('button').addEventListener('click', e => {
+      e.preventDefault();
+      updateDocument(doc => { doc.layerCollections = collections.filter(item => item.id !== collection.id); });
+      _updateLayersPanel();
+    });
+    section.addEventListener('toggle', () => {
+      if (!section.isConnected) return;
+      if (collection.collapsed === !section.open) return;
+      updateDocument(() => { collection.collapsed = !section.open; });
+    });
+    enableDrop(section, collection.id);
+    containers.set(collection.id, section.querySelector('.layer-collection-items'));
+    list.appendChild(section);
+  }
+  const ungrouped = document.createElement('div');
+  ungrouped.className = 'layers-ungrouped';
+  if (collections.length) ungrouped.innerHTML = '<div class="layers-ungrouped-title">Sin agrupación</div>';
+  enableDrop(ungrouped, null);
+  list.appendChild(ungrouped);
   for (const el of sorted) {
     const item = document.createElement('div');
     item.className = 'layer-item';
+    item.draggable = true;
+    item.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('application/x-trazuvia-layer', el.id);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => {
+      list.querySelectorAll('.layer-drop-target').forEach(target => target.classList.remove('layer-drop-target'));
+    });
     if (state.selectedElementIds.includes(el.id)) item.classList.add('selected');
     const name = el.name || (el.type === 'connector' ? 'Conector'
       : el.type === 'group' ? 'Grupo'
@@ -979,10 +1111,16 @@ function _updateLayersPanel() {
     item.innerHTML = `
       <span class="layer-icon">${_getLayerIconSvg(el)}</span>
       <span class="layer-name">${_escapeAttribute(name)}</span>
-      <span class="layer-visibility" data-id="${el.id}">${el.visible !== false ? '\uD83D\uDC41' : '\u2014'}</span>
+      <button type="button" class="layer-visibility" data-id="${el.id}" aria-label="${el.visible !== false ? 'Ocultar capa' : 'Mostrar capa'}" title="${el.visible !== false ? 'Ocultar capa' : 'Mostrar capa'}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+          <circle cx="12" cy="12" r="3" />
+          ${el.visible === false ? '<path d="m3 3 18 18" />' : ''}
+        </svg>
+      </button>
     `;
     item.addEventListener('click', (e) => {
-      if (e.target.classList.contains('layer-visibility')) {
+      if (e.target.closest('.layer-visibility')) {
         const before = snapshotElements();
         updateElement(el.id, { visible: el.visible === false ? true : false });
         const after = snapshotElements();
@@ -996,7 +1134,8 @@ function _updateLayersPanel() {
       _updatePropertiesPanel();
       _updateLayersPanel();
     });
-    list.appendChild(item);
+    const collection = collections.find(group => group.elementIds.includes(el.id));
+    (containers.get(collection?.id) || ungrouped).appendChild(item);
   }
 }
 
@@ -1169,24 +1308,6 @@ function _zoomToFit() {
   state.viewport.panY = bounds.y - (wh / newZoom - bounds.height) / 2;
   applyViewport(state.viewport);
   _updateZoomUI(newZoom);
-}
-
-function _dropComponent(compType, x, y) {
-  const state = getState();
-  const before = snapshotElements();
-  const group = createComponentGroup(compType, x, y);
-  if (group) {
-    addElement(group);
-    const pendingChildren = getPendingChildren(group.id);
-    for (const child of pendingChildren) {
-      addElement(child);
-    }
-    setSelection([group.id]);
-    const after = snapshotElements();
-    commitAction({ type: 'snapshot', before, after });
-    renderDocument(state.document);
-    refreshSelection();
-  }
 }
 
 function _updateStatusSaved() {

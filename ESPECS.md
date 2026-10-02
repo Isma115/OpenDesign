@@ -142,7 +142,7 @@ La aplicación se dividirá en módulos independientes.
 <body>
   <div id="app">
     <header id="topbar">
-      <div class="brand">GeoFlow Designer</div>
+      <div class="brand">Trazuvia</div>
       <nav class="menu-bar"></nav>
     </header>
 
@@ -838,7 +838,7 @@ Opciones:
 Extensión sugerida:
 
 ```txt
-.geoflow.json
+.trazuvia.json
 ```
 
 Contenido:
@@ -1129,7 +1129,7 @@ Se recomienda usar Pointer Events para compatibilidad con mouse, stylus y pantal
 
 ### 36.3 Editar documento existente
 
-1. Usuario abre archivo `.geoflow.json`.
+1. Usuario abre archivo `.trazuvia.json`.
 2. El sistema valida el documento.
 3. Se renderiza el contenido.
 4. Usuario modifica elementos.

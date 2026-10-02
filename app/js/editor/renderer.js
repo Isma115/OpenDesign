@@ -682,6 +682,7 @@ function _renderGroup(group, docModel) {
     g.appendChild(text);
   }
 
+  _renderConnectionPoints(g, group);
   _shapeLayer.appendChild(g);
 }
 

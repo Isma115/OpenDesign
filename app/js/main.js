@@ -7,8 +7,11 @@ import { initKeyboard, updateToolUI } from './editor/keyboard.js';
 import { initUI, refreshPropertiesPanel, handleMenuAction } from './ui/ui.js';
 import { loadFromLocal, initAutoSave } from './io/storage.js';
 import { initTheme, getTheme, updateCanvasTheme } from './ui/theme.js';
+import { migrateLegacyStorage } from './io/legacy-storage.js';
+import { initExitDialog } from './ui/exit-dialog.js';
 
 function main() {
+  migrateLegacyStorage();
   initTheme();
   initRenderer();
   initSelection();
@@ -46,7 +49,10 @@ function main() {
 
   // Integración con Electron
   if (window.electronAPI) {
-    window.electronAPI.onMenuAction(handleMenuAction);
+    initExitDialog();
+    window.electronAPI.onMenuAction(action => {
+      if (!document.getElementById('exit-dialog').open) handleMenuAction(action);
+    });
   }
 }
 

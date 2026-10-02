@@ -1,4 +1,4 @@
-# GeoFlow Designer
+# Trazuvia
 
 Aplicación de escritorio para diseño de interfaces y diagramas de flujo.
 
@@ -51,7 +51,7 @@ Los instaladores se generarán en la carpeta `dist/`.
 
 ## Plantilla CSS global
 
-La pestaña `CSS` del panel derecho permite editar una plantilla global que se guarda dentro del archivo `.geoflow.json`. Esta plantilla define clases reutilizables como `.gf-button`, `.gf-input`, `.gf-card`, `.gf-navbar`, `.gf-sidebar`, `.gf-table` y `.gf-modal`.
+La pestaña `CSS` del panel derecho permite editar una plantilla global que se guarda dentro del archivo `.trazuvia.json`. Esta plantilla define clases reutilizables como `.trazuvia-button`, `.trazuvia-input`, `.trazuvia-card`, `.trazuvia-navbar`, `.trazuvia-sidebar`, `.trazuvia-table` y `.trazuvia-modal`.
 
 La plantilla tiene dos modos de edicion. `Visual` modifica tokens y reglas frecuentes mediante controles de color y campos simples. `Codigo` permite editar el CSS completo en un editor oscuro con fuente y resaltado de sintaxis inspirado en Visual Studio Code.
 

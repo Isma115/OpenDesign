@@ -2,6 +2,7 @@
 import { getState, setActiveTool, addElement, updateElement, updateElements, removeElement, setSelection, clearSelection, getElementById } from '../core/state.js';
 import { screenToCanvas, getElementBounds } from '../core/geometry.js';
 import { createShapeByTool } from '../model/shapes.js';
+import { createComponentGroup, getPendingChildren } from '../model/components.js';
 import { renderDocument, renderElement, updateElementNode, clearPreview, renderPreview, applyViewport, getSvgCanvas, renderGuideLines, clearGuides, SVG_NS } from './renderer.js';
 import { handleSelectionClick, handleCanvasClick, hitTest, hitTestHandle, hitTestConnectionPoint, updateSelectionBox, endSelectionBox, refreshSelection } from './selection.js';
 import { snapElement, snapPoint } from '../core/snapping.js';
@@ -35,9 +36,12 @@ export function initTools() {
   canvas.addEventListener('pointerup', _onPointerUp);
   canvas.addEventListener('wheel', _onWheel, { passive: false });
 
-  document.querySelectorAll('.tool-btn').forEach(btn => {
+  document.querySelectorAll('.tool-btn[data-tool], .component-item[data-component]').forEach(btn => {
+    if (btn.dataset.component) {
+      btn.title = `${btn.getAttribute('aria-label') || btn.dataset.component}: clic para seleccionar y colocar, o arrastra al lienzo`;
+    }
     btn.addEventListener('click', () => {
-      const tool = btn.dataset.tool;
+      const tool = btn.dataset.component ? `component:${btn.dataset.component}` : btn.dataset.tool;
       if (tool) {
         _cancelActiveInteraction();
         if (_isConnectionTool(tool)) {
@@ -765,13 +769,22 @@ function _endDraw(point) {
     h = 0;
   }
 
-  if (!isLineTool && w < 5 && h < 5 && tool !== 'text' && tool !== 'note') {
+  if (!isLineTool && !tool.startsWith('component:') && w < 5 && h < 5 && tool !== 'text' && tool !== 'note') {
     w = 120;
     h = 80;
   }
 
   if (!element) {
     const snapped = snapPoint(x, y);
+    if (tool.startsWith('component:')) {
+      placeComponent(tool.slice('component:'.length), snapped.x, snapped.y,
+        w >= 5 && h >= 5 ? { width: w, height: h } : null);
+      _dragData = null;
+      _pointerDownPos = null;
+      _lastClickTime = 0;
+      _lastClickPoint = null;
+      return;
+    }
     element = createShapeByTool(tool, snapped.x, snapped.y, w, h);
   }
   if (element) {
@@ -792,6 +805,23 @@ function _endDraw(point) {
   }
   _dragData = null;
   _pointerDownPos = null;
+}
+
+export function placeComponent(componentType, x, y, size = null) {
+  const before = snapshotElements();
+  const point = snapPoint(x, y);
+  const group = createComponentGroup(componentType, point.x, point.y);
+  if (!group) return null;
+  addElement(group);
+  getPendingChildren(group.id).forEach(addElement);
+  if (size) updateElement(group.id, { width: Math.max(20, size.width), height: Math.max(20, size.height) });
+  commitAction({ type: 'snapshot', before, after: snapshotElements() });
+  setSelection([group.id]);
+  setActiveTool('select');
+  renderDocument(getState().document);
+  refreshSelection();
+  _updateToolCursor();
+  return group;
 }
 
 function _startPan(e) {
@@ -943,7 +973,7 @@ function _isConnectionTool(tool) {
 }
 
 function _isDrawingTool(tool) {
-  return [
+  return tool.startsWith('component:') || [
     'rectangle', 'roundedRectangle', 'ellipse', 'triangle', 'diamond',
     'pentagon', 'hexagon', 'star', 'line', 'arrow', 'text', 'note', 'frame',
     'flow-start', 'flow-process', 'flow-decision', 'flow-io',
@@ -955,7 +985,7 @@ function _updateToolCursor() {
   const state = getState();
   const canvas = getSvgCanvas();
   canvas.setAttribute('class', '');
-  canvas.classList.add(`tool-${state.activeTool}`);
+  canvas.classList.add(state.activeTool.startsWith('component:') ? 'tool-component' : `tool-${state.activeTool}`);
   if (state.interaction.isConnecting) canvas.classList.add('connection-pending');
 }
 

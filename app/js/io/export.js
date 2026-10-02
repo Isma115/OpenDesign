@@ -9,7 +9,7 @@ export function exportAsJSON() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${state.document.name || 'design'}.geoflow.json`;
+  a.download = `${state.document.name || 'design'}.trazuvia.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -147,7 +147,7 @@ function _buildHTMLDocument(doc) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${_escapeHTML(doc.name || 'GeoFlow export')}</title>
+  <title>${_escapeHTML(doc.name || 'Trazuvia export')}</title>
   <style>
 ${_indentCss(_buildBaseExportCss(doc))}
   </style>
@@ -156,7 +156,7 @@ ${_indentCss(buildCssBundle(doc))}
   </style>
 </head>
 <body>
-  <main class="gf-page" aria-label="${_escapeAttribute(doc.name || 'Diseno exportado')}">
+  <main class="trazuvia-page" aria-label="${_escapeAttribute(doc.name || 'Diseno exportado')}">
 ${_buildExportElements(doc)}
   </main>
 </body>
@@ -164,7 +164,7 @@ ${_buildExportElements(doc)}
 }
 
 function _buildBaseExportCss(doc) {
-  return `.gf-page {
+  return `.trazuvia-page {
   position: relative;
   width: ${Math.round(doc.canvas?.width || 1920)}px;
   height: ${Math.round(doc.canvas?.height || 1080)}px;
@@ -172,22 +172,22 @@ function _buildBaseExportCss(doc) {
   overflow: hidden;
 }
 
-.gf-export-element {
+.trazuvia-export-element {
   box-sizing: border-box;
 }
 
-.gf-shape {
+.trazuvia-shape {
   border-style: solid;
 }
 
-.gf-shape img {
+.trazuvia-shape img {
   display: block;
   object-fit: cover;
   width: 100%;
   height: 100%;
 }
 
-.gf-text {
+.trazuvia-text {
   background: transparent;
   border-color: transparent;
 }
@@ -220,6 +220,19 @@ function _buildComponentElement(group, doc) {
   const name = (group.componentType || group.name || '').toLowerCase();
 
   switch (name) {
+    case 'db-table':
+    case 'db-view':
+    case 'db-primary-key':
+    case 'db-foreign-key':
+    case 'db-index':
+    case 'db-query': {
+      const children = (group.children || [])
+        .map(childId => doc.elements.find(element => element.id === childId))
+        .filter(child => child && child.visible !== false)
+        .map(child => _buildShapeElement({ ...child, x: child.x - group.x, y: child.y - group.y }))
+        .join('\n');
+      return `    <section id="${id}" class="${_escapeAttribute(classes)}" style="${_escapeAttribute(style)}" aria-label="${_escapeAttribute(group.name || 'Base de datos')}">\n${children}\n    </section>`;
+    }
     case 'button':
       return `    <button id="${id}" class="${_escapeAttribute(classes)}" style="${_escapeAttribute(style)}">${_escapeHTML(text || 'Button')}</button>`;
     case 'input':
@@ -250,7 +263,7 @@ function _buildComponentElement(group, doc) {
 }
 
 function _buildShapeElement(element) {
-  const classes = `${getExportClassList(element)} ${element.type === 'text' ? 'gf-text' : 'gf-shape'}`;
+  const classes = `${getExportClassList(element)} ${element.type === 'text' ? 'trazuvia-text' : 'trazuvia-shape'}`;
   const style = getExportLayoutStyle(element);
   const text = element.text?.value || '';
 

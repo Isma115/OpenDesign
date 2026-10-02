@@ -1,5 +1,5 @@
 // #region Gestion de temas | Funcionalidad | cambio entre modo claro y oscuro
-const THEME_KEY = 'geoflow_theme';
+const THEME_KEY = 'trazuvia_theme';
 
 export function initTheme() {
   const saved = localStorage.getItem(THEME_KEY);

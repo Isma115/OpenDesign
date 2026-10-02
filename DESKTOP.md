@@ -1,4 +1,4 @@
-# GeoFlow Designer - Aplicación de Escritorio
+# Trazuvia - Aplicación de Escritorio
 
 ## Estructura del Proyecto
 

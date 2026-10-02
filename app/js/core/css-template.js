@@ -19,7 +19,7 @@ export function ensureDocumentStyles(docModel) {
 export function getCssClassForElement(element) {
   if (element.css?.className) return element.css.className.trim();
   if (element.type === 'group' && element.name) {
-    return `gf-${_normalizeClassName(element.name)}`;
+    return `trazuvia-${_normalizeClassName(element.name)}`;
   }
   return '';
 }
@@ -73,7 +73,7 @@ export function buildCssBundle(docModel) {
 }
 
 export function getExportClassList(element) {
-  const classes = ['gf-export-element'];
+  const classes = ['trazuvia-export-element'];
   const specificClass = getCssClassForElement(element);
   if (specificClass) classes.push(_cssNameToClass(specificClass));
   classes.push(_elementSpecificClass(element));
@@ -102,10 +102,10 @@ function _buildVisualCss(element) {
     if (element.style.stroke && element.style.stroke !== 'none') rules.push(`border-color: ${element.style.stroke};`);
     if (element.style.strokeWidth != null) rules.push(`border-width: ${element.style.strokeWidth}px;`);
     if (element.style.opacity != null && element.style.opacity !== 1) rules.push(`opacity: ${element.style.opacity};`);
-    if (element.style.shadow) rules.push('box-shadow: var(--gf-shadow-sm);');
+    if (element.style.shadow) rules.push('box-shadow: var(--trazuvia-shadow-sm);');
   }
   if (element.shape === 'roundedRectangle' || element.shape === 'flow-start') {
-    rules.push('border-radius: var(--gf-radius-md);');
+    rules.push('border-radius: var(--trazuvia-radius-md);');
   } else if (element.shape === 'ellipse') {
     rules.push('border-radius: 999px;');
   }
@@ -120,7 +120,7 @@ function _buildVisualCss(element) {
 }
 
 function _elementSpecificClass(element) {
-  return `gf-el-${String(element.id || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+  return `trazuvia-el-${String(element.id || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '-')}`;
 }
 
 function _normalizeClassName(value) {

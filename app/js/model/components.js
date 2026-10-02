@@ -47,7 +47,13 @@ export function createComponentGroup(compType, x, y) {
     sidebar: _createSidebar,
     table: _createTable,
     image: _createImage,
-    modal: _createModal
+    modal: _createModal,
+    'db-table': (x, y) => _createDatabaseBlock('table', x, y),
+    'db-view': (x, y) => _createDatabaseBlock('view', x, y),
+    'db-primary-key': (x, y) => _createDatabaseBlock('primary-key', x, y),
+    'db-foreign-key': (x, y) => _createDatabaseBlock('foreign-key', x, y),
+    'db-index': (x, y) => _createDatabaseBlock('index', x, y),
+    'db-query': (x, y) => _createDatabaseBlock('query', x, y)
   };
   if (!Object.hasOwn(factories, compType)) return null;
   const factory = factories[compType];
@@ -108,7 +114,7 @@ function _createButton(x, y) {
   return {
     id: groupId, type: 'group', name: 'Button',
     x, y, width: 120, height: 40, rotation: 0,
-    children: [bgId], css: _componentCss('gf-button'),
+    children: [bgId], css: _componentCss('trazuvia-button'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -127,7 +133,7 @@ function _createInput(x, y) {
   return {
     id: groupId, type: 'group', name: 'Input',
     x, y, width: 200, height: 36, rotation: 0,
-    children: [bgId], css: _componentCss('gf-input'),
+    children: [bgId], css: _componentCss('trazuvia-input'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -149,7 +155,7 @@ function _createTextarea(x, y) {
   return {
     id: groupId, type: 'group', name: 'Textarea',
     x, y, width: 200, height: 80, rotation: 0,
-    children: [bgId, line1.id, line2.id, line3.id], css: _componentCss('gf-textarea'),
+    children: [bgId, line1.id, line2.id, line3.id], css: _componentCss('trazuvia-textarea'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -174,7 +180,7 @@ function _createCheckbox(x, y) {
   return {
     id: groupId, type: 'group', name: 'Checkbox',
     x, y, width: 126, height: 22, rotation: 0,
-    children: [boxId, labelId], css: _componentCss('gf-checkbox'),
+    children: [boxId, labelId], css: _componentCss('trazuvia-checkbox'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -198,7 +204,7 @@ function _createToggle(x, y) {
   return {
     id: groupId, type: 'group', name: 'Toggle',
     x, y, width: 44, height: 24, rotation: 0,
-    children: [bgId, knobId], css: _componentCss('gf-toggle'),
+    children: [bgId, knobId], css: _componentCss('trazuvia-toggle'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -231,7 +237,7 @@ function _createCard(x, y) {
   return {
     id: groupId, type: 'group', name: 'Card',
     x, y, width: 240, height: 160, rotation: 0,
-    children: [bgId, headerId, titleId, line1.id, line2.id], css: _componentCss('gf-card'),
+    children: [bgId, headerId, titleId, line1.id, line2.id], css: _componentCss('trazuvia-card'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -250,7 +256,7 @@ function _createAvatar(x, y) {
   return {
     id: groupId, type: 'group', name: 'Avatar',
     x, y, width: 48, height: 48, rotation: 0,
-    children: [bgId], css: _componentCss('gf-avatar'),
+    children: [bgId], css: _componentCss('trazuvia-avatar'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -285,7 +291,7 @@ function _createNavbar(x, y) {
   return {
     id: groupId, type: 'group', name: 'Navbar',
     x, y, width: 600, height: 48, rotation: 0,
-    children: [bgId, logoId, titleId, link1.id, link2.id, link3.id], css: _componentCss('gf-navbar'),
+    children: [bgId, logoId, titleId, link1.id, link2.id, link3.id], css: _componentCss('trazuvia-navbar'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -321,7 +327,7 @@ function _createSidebar(x, y) {
   return {
     id: groupId, type: 'group', name: 'Sidebar',
     x, y, width: 200, height: 400, rotation: 0,
-    children: [bgId, headerId, titleId, menu1.id, menu2.id, menu3.id, menu4.id], css: _componentCss('gf-sidebar'),
+    children: [bgId, headerId, titleId, menu1.id, menu2.id, menu3.id, menu4.id], css: _componentCss('trazuvia-sidebar'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -350,7 +356,7 @@ function _createTable(x, y) {
   return {
     id: groupId, type: 'group', name: 'Table',
     x, y, width: 400, height: 200, rotation: 0,
-    children: [bgId, headerId, vertical1.id, vertical2.id, horizontal1.id, horizontal2.id], css: _componentCss('gf-table'),
+    children: [bgId, headerId, vertical1.id, vertical2.id, horizontal1.id, horizontal2.id], css: _componentCss('trazuvia-table'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -388,7 +394,7 @@ function _createImage(x, y) {
   return {
     id: groupId, type: 'group', name: 'Image',
     x, y, width: 200, height: 150, rotation: 0,
-    children: [bgId, sunId, mountainId, labelId], css: _componentCss('gf-image'),
+    children: [bgId, sunId, mountainId, labelId], css: _componentCss('trazuvia-image'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -427,7 +433,59 @@ function _createModal(x, y) {
   return {
     id: groupId, type: 'group', name: 'Modal',
     x, y, width: 360, height: 240, rotation: 0,
-    children: [bgId, headerId, titleId, closeId, closeLine1.id, closeLine2.id], css: _componentCss('gf-modal'),
+    children: [bgId, headerId, titleId, closeId, closeLine1.id, closeLine2.id], css: _componentCss('trazuvia-modal'),
+    locked: false, visible: true, zIndex: getNextZIndex()
+  };
+}
+
+function _createDatabaseBlock(kind, x, y) {
+  const templates = {
+    table: ['Tabla', 'usuarios', ['PK  id : INTEGER', 'nombre : VARCHAR(120)', 'email : VARCHAR(255)']],
+    view: ['Vista', 'Vista · usuarios_activos', ['id · nombre · email', 'WHERE activo = TRUE']],
+    'primary-key': ['Clave primaria', 'PK · Clave primaria', ['id : INTEGER', 'Único · NOT NULL']],
+    'foreign-key': ['Clave foránea', 'FK · Clave foránea', ['usuario_id : INTEGER', 'REFERENCES usuarios(id)']],
+    index: ['Índice', 'Índice · idx_email', ['usuarios(email)', 'UNIQUE · B-TREE']],
+    query: ['Consulta SQL', 'Consulta SQL', ['SELECT id, nombre', 'FROM usuarios', 'WHERE activo = TRUE']]
+  };
+  const [name, title, rows] = templates[kind];
+  const palette = getComponentPalette().table;
+  const width = 280;
+  const height = 36 + rows.length * 32;
+  const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
+  const children = [
+    _shapeEl({
+      name: `${name} · fondo`, x, y, width, height,
+      style: _baseStyle({ fill: palette.fill, stroke: palette.stroke, strokeWidth: 1 })
+    }),
+    _shapeEl({
+      name: `${name} · título`, x, y, width, height: 36,
+      style: _baseStyle({ fill: palette.header, stroke: palette.stroke, strokeWidth: 1 }),
+      text: _baseText({ value: title, align: 'left', color: palette.text, fontWeight: 600 })
+    })
+  ];
+  rows.forEach((value, index) => {
+    const rowY = y + 36 + index * 32;
+    children.push(_shapeEl({
+      type: 'text', shape: 'text', name: `${name} · ${value}`,
+      x: x + 4, y: rowY, width: width - 8, height: 32,
+      style: _baseStyle({ fill: 'none', stroke: 'none', strokeWidth: 0 }),
+      text: _baseText({ value, align: 'left', color: palette.text, fontSize: 13,
+        fontFamily: 'SFMono-Regular, Consolas, Liberation Mono, monospace' })
+    }));
+    if (index > 0) {
+      const separator = _lineEl(x, rowY, x + width, rowY, palette.stroke, 1, 0.4);
+      separator.name = `${name} · separador ${index}`;
+      children.push(separator);
+    }
+  });
+  _pendingChildren.set(groupId, children);
+  return {
+    id: groupId, type: 'group', name, x, y, width, height, rotation: 0,
+    children: children.map(child => child.id), css: _componentCss(`trazuvia-db-${kind}`),
+    connectionPoints: [
+      { id: 'top', x: 0.5, y: 0 }, { id: 'right', x: 1, y: 0.5 },
+      { id: 'bottom', x: 0.5, y: 1 }, { id: 'left', x: 0, y: 0.5 }
+    ],
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }

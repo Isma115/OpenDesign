@@ -3,15 +3,20 @@ import { createComponentGroup, getPendingChildren } from './components.js';
 import { createShapeByTool, createConnector, createGroup, getShapeDisplayName } from './shapes.js';
 import { createDefaultStyles } from '../core/css-template.js';
 import { getConnectionPoint, getConnectionPointDirection, routeConnector } from './connectors.js';
+import { createLayerCollection } from './layer-collections.js';
 
 export function createExampleDocument() {
   const elements = [];
+  const organization = { layerCollections: [] };
+  let collection = createLayerCollection(organization, 'Presentación · Órbita');
+  const presentationCollection = collection;
   const ink = '#183b36', muted = '#52685f', paper = '#fffdf7';
   const green = '#d6ef9c', coral = '#efad96', blue = '#bddaea';
   const fontFamily = 'Avenir Next, Avenir, Segoe UI, sans-serif';
   const add = element => {
     element.zIndex = elements.length + 1;
     elements.push(element);
+    collection.elementIds.push(element.id);
     return element;
   };
   const shape = (tool, x, y, width, height, fill, value = '') => {
@@ -80,8 +85,9 @@ export function createExampleDocument() {
   backdrop.name = 'Fondo de presentación';
   backdrop.locked = true;
   text('ÓRBITA / Escapadas con otra perspectiva', 40, 28, 1320, 34, ink, 700, 56);
-  text('Una marca, dos pantallas y un recorrido. Todo construido con elementos editables de OpenDesign.', 40, 88, 1320, 16, muted);
+  text('Una marca, dos pantallas y un recorrido. Todo construido con elementos editables de Trazuvia.', 40, 88, 1320, 16, muted);
 
+  collection = createLayerCollection(organization, '01 / Web · Descubrir');
   frame('01 / WEB · Descubrir', 48, 184, 1000, 650);
   shape('hexagon', 76, 204, 30, 30, ink);
   text('órbita', 110, 200, 140, 23, ink, 700);
@@ -116,6 +122,7 @@ Escapadas elegidas para reconectar.`, 72, 478, 480, 16, muted, 400, 60);
     text(caption, x + 10, 756, 270, 13, ink);
   });
 
+  collection = createLayerCollection(organization, '02 / Móvil · Reservar');
   frame('02 / MÓVIL · Reservar', 1088, 184, 360, 650);
   text('órbita', 1104, 204, 220, 23, ink, 700);
   shape('rectangle', 1388, 208, 32, 32, '#eef2e7', '×');
@@ -144,6 +151,7 @@ montañas.`, 1104, 502, 312, 29, ink, 700, 78);
   text('por persona · 3 días / 2 noches', 1104, 738, 310, 12, muted);
   button('Reservar escapada  →', 1112, 776, 312);
 
+  collection = createLayerCollection(organization, '03 / Sistema visual');
   frame('03 / SISTEMA VISUAL', 48, 902, 570, 390);
   text('Natural. Cercano. Optimista.', 64, 918, 520, 24, ink, 600);
   [[ink, 'Bosque'], [green, 'Lima'], [coral, 'Arcilla'], [blue, 'Cielo'], [paper, 'Marfil']].forEach(([fill, label], i) => {
@@ -158,6 +166,7 @@ montañas.`, 1104, 502, 312, 29, ink, 700, 78);
   button('Acción principal', 80, 1214, 180);
   button('Acción secundaria', 280, 1214, 200, true);
 
+  collection = createLayerCollection(organization, '04 / Experiencia · Recorrido de reserva');
   frame('04 / EXPERIENCIA · De la inspiración a la reserva', 658, 902, 790, 390);
   text('Un viaje sencillo, también por dentro.', 674, 918, 730, 24, ink, 600);
   const node = (tool, x, y, w, h, label, fill) => {
@@ -196,6 +205,7 @@ montañas.`, 1104, 502, 312, 29, ink, 700, 78);
   connect(available, 'left', alternative, 'right', 'No');
   connect(alternative, 'top', choose, 'bottom');
   connect(booking, 'right', saved, 'left');
+  collection = presentationCollection;
   text('Explora capas, desagrupa el paisaje o cambia el CSS compartido de los botones.', 48, 1314, 1400, 15, muted);
   const styles = createDefaultStyles();
   styles.componentCss['orbita-primary'] = 'background: #183b36; color: #fffdf7; border-width: 0; border-radius: 0; font-weight: 600;';
@@ -206,7 +216,7 @@ montañas.`, 1104, 502, 312, 29, ink, 700, 78);
     id: 'doc_' + crypto.randomUUID().slice(0, 8), name: 'Órbita · Escapadas con otra perspectiva', version: '1.0.0',
     canvas: { width: 1500, height: 1380, background: '#e9eee3',
       grid: { enabled: false, size: 4, color: '#d3dbcd' }, zoom: 1, pan: { x: 0, y: 0 } },
-    elements, pages: [], styles, metadata: { createdAt: now, updatedAt: now }
+    elements, layerCollections: organization.layerCollections, pages: [], styles, metadata: { createdAt: now, updatedAt: now }
   };
 }
 // #endregion

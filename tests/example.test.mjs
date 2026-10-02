@@ -5,6 +5,20 @@ const { createExampleDocument } = await import('../app/js/model/example.js');
 const doc = createExampleDocument();
 const ids = new Set(doc.elements.map(element => element.id));
 assert.equal(ids.size, doc.elements.length);
+assert.equal(doc.layerCollections.length, 5);
+const organizedIds = doc.layerCollections.flatMap(collection => collection.elementIds);
+assert.equal(organizedIds.length, ids.size);
+assert.deepEqual(new Set(organizedIds), ids);
+for (const collection of doc.layerCollections) {
+  assert(collection.name.trim());
+  assert(collection.elementIds.length > 0);
+  // Los grupos funcionales y sus piezas pertenecen a la misma colección visual.
+  for (const id of collection.elementIds) {
+    const element = doc.elements.find(element => element.id === id);
+    for (const childId of element.children || []) assert(collection.elementIds.includes(childId));
+  }
+}
+assert.deepEqual(JSON.parse(JSON.stringify(doc)).layerCollections, doc.layerCollections);
 assert.equal(doc.elements[0].style.fill, doc.canvas.background);
 assert.equal(doc.elements[0].locked, true);
 // Los separadores no deben heredar el mínimo de 20 px de las herramientas.

@@ -1,5 +1,8 @@
 /* #region Panel derecho | Panel | propiedades, capas y componentes */
 #right-panel {
+  container-type: inline-size;
+  container-name: right-panel;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background: var(--color-panel);
@@ -91,6 +94,11 @@
 }
 
 .panel-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  white-space: nowrap;
   flex: 1;
   padding: 9px 4px;
   border-radius: 0;
@@ -99,6 +107,16 @@
   color: var(--color-muted);
   border-bottom: 2px solid transparent;
   transition: color 0.15s, border-color 0.15s;
+}
+
+.panel-tab-icon {
+  display: none;
+  flex-shrink: 0;
+}
+
+@container right-panel (max-width: 299px) {
+  .panel-tab-label { display: none; }
+  .panel-tab-icon { display: block; }
 }
 
 .panel-tab:hover {
@@ -259,6 +277,25 @@
   padding: 4px;
 }
 
+.layers-actions { padding: 8px; }
+.layers-actions button {
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid var(--color-border);
+  color: var(--color-primary);
+  cursor: pointer;
+}
+.layer-collection { margin-bottom: 6px; border: 1px solid var(--color-border); }
+.layer-collection summary { display: flex; align-items: center; gap: 6px; padding: 6px; background: var(--color-hover); cursor: pointer; }
+.layer-collection summary::before { content: '›'; width: 12px; }
+.layer-collection[open] summary::before { content: '⌄'; }
+.layer-collection-name { min-width: 0; flex: 1; width: 100%; background: transparent; color: var(--color-text); border: 0; font: inherit; font-size: 12px; }
+.layer-collection-remove { padding: 2px 6px; color: var(--color-muted); cursor: pointer; }
+.layer-collection-items { min-height: 28px; padding-left: 8px; }
+.layers-ungrouped { min-height: 40px; }
+.layers-ungrouped-title { padding: 8px; color: var(--color-muted); font-size: 11px; }
+.layer-drop-target { outline: 2px solid var(--color-primary); outline-offset: -2px; background: var(--color-accent-soft); }
+
 .layer-item {
   display: flex;
   align-items: center;
@@ -306,16 +343,23 @@
 .layer-visibility {
   width: 20px;
   height: 20px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  padding: 0;
   opacity: 0.5;
   cursor: pointer;
   border-radius: 0;
 }
 
-.layer-visibility:hover {
+.layer-visibility svg {
+  width: 16px;
+  height: 16px;
+}
+
+.layer-visibility:hover,
+.layer-visibility:focus-visible {
   opacity: 1;
   background: var(--color-hover);
 }
@@ -352,6 +396,12 @@
 
 .component-item:active {
   cursor: grabbing;
+}
+
+.component-item.active {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: var(--color-accent-soft);
 }
 
 .comp-preview {

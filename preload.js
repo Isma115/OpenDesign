@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onMenuAction: (callback) => {
     ipcRenderer.on('menu-action', (event, action) => callback(action));
   },
+  onConfirmExit: (callback) => ipcRenderer.on('confirm-exit', () => callback()),
+  respondToExit: (confirmed) => ipcRenderer.send('exit-response', confirmed),
   
   // Diálogos de archivo
   openFile: () => ipcRenderer.invoke('dialog-open-file'),
