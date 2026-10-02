@@ -31,75 +31,119 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, 'app', 'index.html'));
 
   // Menu de la aplicación
+  const sendAction = action => () => mainWindow.webContents.send('menu-action', action);
   const template = [
+    ...(process.platform === 'darwin' ? [{
+      label: app.name,
+      submenu: [
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    }] : []),
     {
       label: 'Archivo',
       submenu: [
         {
           label: 'Nuevo',
           accelerator: 'CmdOrCtrl+N',
-          click: () => mainWindow.webContents.send('menu-action', 'new')
+          click: sendAction('new')
         },
         {
           label: 'Abrir JSON...',
           accelerator: 'CmdOrCtrl+O',
-          click: () => mainWindow.webContents.send('menu-action', 'open')
+          click: sendAction('open')
         },
         {
           label: 'Proyecto de Ejemplo',
-          click: () => mainWindow.webContents.send('menu-action', 'example-project')
+          click: sendAction('example-project')
         },
         { type: 'separator' },
         {
           label: 'Guardar',
           accelerator: 'CmdOrCtrl+S',
-          click: () => mainWindow.webContents.send('menu-action', 'save')
+          click: sendAction('save')
         },
         {
           label: 'Descargar JSON',
-          click: () => mainWindow.webContents.send('menu-action', 'download-json')
+          click: sendAction('download-json')
         },
-        { type: 'separator' },
-        {
-          label: 'Exportar HTML',
-          click: () => mainWindow.webContents.send('menu-action', 'export-html')
-        },
-        {
-          label: 'Exportar SVG',
-          click: () => mainWindow.webContents.send('menu-action', 'export-svg')
-        },
-        {
-          label: 'Exportar PNG',
-          click: () => mainWindow.webContents.send('menu-action', 'export-png')
-        },
-        { type: 'separator' },
-        { role: 'quit' }
+        ...(process.platform !== 'darwin' ? [
+          { type: 'separator' },
+          { role: 'quit' }
+        ] : [])
+      ]
+    },
+    {
+      label: 'Exportar',
+      submenu: [
+        { label: 'HTML', click: sendAction('export-html') },
+        { label: 'SVG', click: sendAction('export-svg') },
+        { label: 'PNG', click: sendAction('export-png') }
       ]
     },
     {
       label: 'Editar',
       submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
+        { label: 'Deshacer', accelerator: 'CmdOrCtrl+Z', click: sendAction('undo') },
+        { label: 'Rehacer', accelerator: 'CmdOrCtrl+Shift+Z', click: sendAction('redo') },
         { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { role: 'selectAll' }
+        { label: 'Cortar', accelerator: 'CmdOrCtrl+X', click: sendAction('cut') },
+        { label: 'Copiar', accelerator: 'CmdOrCtrl+C', click: sendAction('copy') },
+        { label: 'Pegar', accelerator: 'CmdOrCtrl+V', click: sendAction('paste') },
+        { label: 'Duplicar', accelerator: 'CmdOrCtrl+D', click: sendAction('duplicate') },
+        { label: 'Eliminar', accelerator: 'Delete', click: sendAction('delete') },
+        { type: 'separator' },
+        { label: 'Seleccionar todo', accelerator: 'CmdOrCtrl+A', click: sendAction('select-all') }
       ]
     },
     {
       label: 'Ver',
       submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
+        { label: 'Cuadrícula', click: sendAction('toggle-grid') },
+        { label: 'Ajustar a cuadrícula', click: sendAction('toggle-snap') },
+        { label: 'Guías', click: sendAction('toggle-guides') },
         { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
+        { label: 'Modo oscuro', click: sendAction('toggle-theme') },
+        { type: 'separator' },
+        { label: 'Zoom 50%', click: sendAction('zoom-50') },
+        { label: 'Zoom 100%', click: sendAction('zoom-100') },
+        { label: 'Zoom 200%', click: sendAction('zoom-200') },
+        { label: 'Ajustar al contenido', click: sendAction('zoom-fit') },
         { type: 'separator' },
         { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Organizar',
+      submenu: [
+        { label: 'Traer al frente', click: sendAction('bring-front') },
+        { label: 'Enviar al fondo', click: sendAction('send-back') },
+        { label: 'Adelantar', click: sendAction('bring-forward') },
+        { label: 'Atrasar', click: sendAction('send-backward') },
+        { type: 'separator' },
+        { label: 'Alinear izquierda', click: sendAction('align-left') },
+        { label: 'Alinear centro', click: sendAction('align-center') },
+        { label: 'Alinear derecha', click: sendAction('align-right') },
+        { type: 'separator' },
+        { label: 'Distribuir horizontal', click: sendAction('distribute-h') },
+        { label: 'Distribuir vertical', click: sendAction('distribute-v') },
+        { type: 'separator' },
+        { label: 'Agrupar', accelerator: 'CmdOrCtrl+G', click: sendAction('group') },
+        { label: 'Desagrupar', accelerator: 'CmdOrCtrl+Shift+G', click: sendAction('ungroup') }
+      ]
+    },
+    { role: 'windowMenu', label: 'Ventana' },
+    {
+      label: 'Desarrollo',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' }
       ]
     },
     {

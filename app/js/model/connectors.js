@@ -1,6 +1,6 @@
 // #region Conectores | Funcionalidad | ruteo y gestion de conectores entre figuras
-import { getState, getElementById, updateElement, updateElements } from './state.js';
-import { pointInElement, getLocalConnectionPoint } from './geometry.js';
+import { getState, getElementById, updateElement, updateElements } from '../core/state.js';
+import { pointInElement, getLocalConnectionPoint } from '../core/geometry.js';
 import { createConnector } from './shapes.js';
 
 const DEFAULT_DIRECTION = { x: 1, y: 0 };

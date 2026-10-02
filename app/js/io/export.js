@@ -1,6 +1,6 @@
 // #region Exportacion de archivos | Funcionalidad | exportar a JSON, HTML, SVG y PNG
-import { getState } from './state.js';
-import { buildCssBundle, getExportClassList, getExportLayoutStyle } from './css-template.js';
+import { getState } from '../core/state.js';
+import { buildCssBundle, getExportClassList, getExportLayoutStyle } from '../core/css-template.js';
 
 export function exportAsJSON() {
   const state = getState();
@@ -217,7 +217,7 @@ function _buildComponentElement(group, doc) {
   const style = getExportLayoutStyle(group);
   const text = _getGroupText(group, doc);
   const id = _escapeAttribute(group.id);
-  const name = (group.name || '').toLowerCase();
+  const name = (group.componentType || group.name || '').toLowerCase();
 
   switch (name) {
     case 'button':

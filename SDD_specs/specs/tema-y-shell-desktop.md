@@ -22,6 +22,6 @@ Proporciona la apariencia clara u oscura y el contenedor Electron que inicia la 
 
 ## Evidencia de código
 
-- `app/js/theme.js`
+- `app/js/ui/theme.js`
 - `electron-main.js`
 - `preload.js`

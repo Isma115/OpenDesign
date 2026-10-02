@@ -20,6 +20,6 @@ Permite representar flujos mediante símbolos específicos y conexiones ancladas
 
 ## Evidencia de código
 
-- `app/js/shapes.js`
-- `app/js/connectors.js`
-- `app/js/tools.js`
+- `app/js/model/shapes.js`
+- `app/js/model/connectors.js`
+- `app/js/editor/tools.js`

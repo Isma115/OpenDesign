@@ -15,6 +15,25 @@ Permite crear y editar elementos vectoriales básicos sobre un lienzo SVG para c
 - La malla tiene que tener poca opacidad que sea sutil, para que no destaque demasiado en los componentes dibujados en el mapa
 - Si el modo puntero del ratón está seleccionado, pero el usuario intenta arrastrar en el canvas vacío, se le permitirá arrastrarse
 - Los componentes, los polígonos, rectángulos, eclípses, etc tienen que tener un color de relleno por defecto que contraste bien dependiendo del modo oscuro o modo claro
+- El texto de las figuras se ajusta a varias líneas cuando supera el ancho interior disponible, respetando alineación, saltos de línea y palabras largas.
+
+## Flujo de ajuste de texto
+
+```mermaid
+flowchart TD
+  A[Texto de la figura] --> B[Calcular ancho interior]
+  B --> C[Medir palabras con fuente y tamaño]
+  C --> D{Cabe en la línea?}
+  D -- Sí --> E[Añadir a la línea actual]
+  D -- No --> F[Crear nueva línea]
+  F --> G{Palabra demasiado larga?}
+  G -- Sí --> H[Partir por caracteres]
+  G -- No --> I[Conservar palabra]
+  E --> J[Crear tspans SVG]
+  H --> J
+  I --> J
+  J --> K[Alinear y renderizar dentro de la figura]
+```
 
 ## Criterios de aceptación
 
@@ -25,5 +44,6 @@ Permite crear y editar elementos vectoriales básicos sobre un lienzo SVG para c
 ## Evidencia de código
 
 - `app/index.html`
-- `app/js/shapes.js`
-- `app/js/ui.js`
+- `app/js/model/shapes.js`
+- `app/js/ui/ui.js`
+- `app/js/editor/renderer.js`

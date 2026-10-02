@@ -37,7 +37,7 @@ export function updateCanvasTheme(theme) {
   if (!canvas) return;
   
   if (theme === 'dark') {
-    canvas.style.background = '#1e293b';
+    canvas.style.background = '#283548';
     const gridPattern = document.getElementById('grid-pattern');
     const gridPatternLarge = document.getElementById('grid-pattern-large');
     if (gridPattern) {
@@ -57,10 +57,10 @@ export function updateCanvasTheme(theme) {
     const arrowMarker = document.getElementById('arrow-marker');
     if (arrowMarker) {
       const path = arrowMarker.querySelector('path');
-      if (path) path.setAttribute('fill', '#9ca3af');
+      if (path) path.setAttribute('fill', 'context-stroke');
     }
   } else {
-    canvas.style.background = '#ffffff';
+    canvas.style.background = '#cbd3de';
     const gridPattern = document.getElementById('grid-pattern');
     const gridPatternLarge = document.getElementById('grid-pattern-large');
     if (gridPattern) {
@@ -80,7 +80,7 @@ export function updateCanvasTheme(theme) {
     const arrowMarker = document.getElementById('arrow-marker');
     if (arrowMarker) {
       const path = arrowMarker.querySelector('path');
-      if (path) path.setAttribute('fill', '#374151');
+      if (path) path.setAttribute('fill', 'context-stroke');
     }
   }
 }

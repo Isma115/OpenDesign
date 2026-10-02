@@ -1,12 +1,12 @@
 // #region Inicializacion de la aplicacion | Funcionalidad | arranque y configuracion inicial
-import { getState, subscribe, resetDocument } from './state.js';
-import { initRenderer, renderDocument, applyViewport } from './renderer.js';
-import { initSelection, refreshSelection } from './selection.js';
-import { initTools } from './tools.js';
-import { initKeyboard, updateToolUI } from './keyboard.js';
-import { initUI, refreshPropertiesPanel, loadExampleProject } from './ui.js';
-import { loadFromLocal, initAutoSave } from './storage.js';
-import { initTheme, getTheme, updateCanvasTheme } from './theme.js';
+import { getState, subscribe } from './core/state.js';
+import { initRenderer, renderDocument, applyViewport } from './editor/renderer.js';
+import { initSelection } from './editor/selection.js';
+import { initTools } from './editor/tools.js';
+import { initKeyboard, updateToolUI } from './editor/keyboard.js';
+import { initUI, refreshPropertiesPanel, handleMenuAction } from './ui/ui.js';
+import { loadFromLocal, initAutoSave } from './io/storage.js';
+import { initTheme, getTheme, updateCanvasTheme } from './ui/theme.js';
 
 function main() {
   initTheme();
@@ -46,42 +46,7 @@ function main() {
 
   // Integración con Electron
   if (window.electronAPI) {
-    window.electronAPI.onMenuAction((action) => {
-      _handleElectronMenuAction(action);
-    });
-  }
-}
-
-function _handleElectronMenuAction(action) {
-  switch (action) {
-    case 'example-project': loadExampleProject(); break;
-    case 'new':
-      if (confirm('Crear nuevo proyecto? Se perderan cambios no guardados.')) {
-        resetDocument();
-        renderDocument(getState().document);
-        refreshSelection();
-        const nameInput = document.getElementById('doc-name');
-        if (nameInput) nameInput.value = 'Nuevo diseno';
-      }
-      break;
-    case 'open':
-      import('./storage.js').then(m => m.openJSON());
-      break;
-    case 'save':
-      import('./storage.js').then(m => m.saveToLocal());
-      break;
-    case 'download-json':
-      import('./storage.js').then(m => m.downloadJSON());
-      break;
-    case 'export-html':
-      import('./export.js').then(m => m.exportAsHTML());
-      break;
-    case 'export-svg':
-      import('./export.js').then(m => m.exportAsSVG());
-      break;
-    case 'export-png':
-      import('./export.js').then(m => m.exportAsPNG());
-      break;
+    window.electronAPI.onMenuAction(handleMenuAction);
   }
 }
 

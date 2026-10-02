@@ -21,5 +21,5 @@ Permite ajustar el lienzo, los elementos y sus capas desde un panel contextual y
 ## Evidencia de código
 
 - `app/index.html`
-- `app/js/ui.js`
-- `app/js/renderer.js`
+- `app/js/ui/ui.js`
+- `app/js/editor/renderer.js`

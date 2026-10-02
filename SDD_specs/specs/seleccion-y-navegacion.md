@@ -20,6 +20,6 @@ Permite localizar, seleccionar, mover y revisar elementos dentro del área de tr
 
 ## Evidencia de código
 
-- `app/js/selection.js`
-- `app/js/tools.js`
-- `app/js/snapping.js`
+- `app/js/editor/selection.js`
+- `app/js/editor/tools.js`
+- `app/js/core/snapping.js`

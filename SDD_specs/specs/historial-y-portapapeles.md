@@ -20,6 +20,6 @@ Permite revertir cambios y reutilizar elementos sin perder sus relaciones intern
 
 ## Evidencia de código
 
-- `app/js/history.js`
-- `app/js/clipboard.js`
-- `app/js/keyboard.js`
+- `app/js/core/history.js`
+- `app/js/io/clipboard.js`
+- `app/js/editor/keyboard.js`

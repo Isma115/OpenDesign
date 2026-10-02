@@ -1,13 +1,13 @@
 // #region Atajos de teclado | Funcionalidad | manejo de eventos de teclado y acciones
-import { getState, setActiveTool, setSelection, clearSelection, getSelectedElements, addElement, removeElement, updateElements } from './state.js';
-import { undo, redo, commitAction, snapshotElements } from './history.js';
+import { getState, setActiveTool, setSelection, clearSelection, getSelectedElements, addElement, removeElement, updateElements } from '../core/state.js';
+import { undo, redo, commitAction, snapshotElements } from '../core/history.js';
 import { renderDocument, applyViewport } from './renderer.js';
-import { screenToCanvas } from './geometry.js';
+import { screenToCanvas } from '../core/geometry.js';
 import { refreshSelection } from './selection.js';
-import { createGroup } from './shapes.js';
-import { getMultiSelectionBounds } from './geometry.js';
-import { copySelectedElements, pasteClipboardElements } from './clipboard.js';
-import { updateAllConnectorsForElements } from './connectors.js';
+import { createGroup } from '../model/shapes.js';
+import { getMultiSelectionBounds } from '../core/geometry.js';
+import { copySelectedElements, pasteClipboardElements } from '../io/clipboard.js';
+import { updateAllConnectorsForElements } from '../model/connectors.js';
 import { cancelActiveCanvasInteraction } from './tools.js';
 
 export function initKeyboard() {

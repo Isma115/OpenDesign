@@ -1,7 +1,7 @@
 // #region Persistencia local | Funcionalidad | guardado y carga de documentos
-import { getState, loadDocument, setDirty, updateDocument } from './state.js';
-import { renderDocument } from './renderer.js';
-import { refreshSelection } from './selection.js';
+import { getState, loadDocument, setDirty, updateDocument } from '../core/state.js';
+import { renderDocument } from '../editor/renderer.js';
+import { refreshSelection } from '../editor/selection.js';
 
 const STORAGE_KEY = 'geoflow_autosave';
 

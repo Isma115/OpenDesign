@@ -1,11 +1,11 @@
 // #region Herramientas de dibujo | Funcionalidad | manejo de interacciones del lienzo
-import { getState, setActiveTool, addElement, updateElement, updateElements, removeElement, setSelection, clearSelection, getElementById } from './state.js';
-import { screenToCanvas, getElementBounds } from './geometry.js';
-import { createShapeByTool } from './shapes.js';
+import { getState, setActiveTool, addElement, updateElement, updateElements, removeElement, setSelection, clearSelection, getElementById } from '../core/state.js';
+import { screenToCanvas, getElementBounds } from '../core/geometry.js';
+import { createShapeByTool } from '../model/shapes.js';
 import { renderDocument, renderElement, updateElementNode, clearPreview, renderPreview, applyViewport, getSvgCanvas, renderGuideLines, clearGuides, SVG_NS } from './renderer.js';
 import { handleSelectionClick, handleCanvasClick, hitTest, hitTestHandle, hitTestConnectionPoint, updateSelectionBox, endSelectionBox, refreshSelection } from './selection.js';
-import { snapElement, snapPoint } from './snapping.js';
-import { commitAction, snapshotElements } from './history.js';
+import { snapElement, snapPoint } from '../core/snapping.js';
+import { commitAction, snapshotElements } from '../core/history.js';
 import {
   createConnectorElement,
   getBestConnectionPointId,
@@ -17,7 +17,7 @@ import {
   routeConnector,
   updateAllConnectorsForElement,
   updateAllConnectorsForElements
-} from './connectors.js';
+} from '../model/connectors.js';
 
 let _dragData = null;
 let _lastClickTime = 0;

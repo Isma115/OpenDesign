@@ -1,11 +1,11 @@
-/* #region Barra superior | Panel | cabecera con menus y acciones rapidas */
+/* #region Barra superior | Panel | cabecera con acciones rapidas */
 #topbar {
   display: flex;
   align-items: center;
   height: var(--topbar-height);
-  background: var(--color-surface);
+  background: var(--color-header);
   border-bottom: 1px solid var(--color-border);
-  padding: 0 12px;
+  padding: 0 16px;
   gap: 8px;
   z-index: 100;
 }
@@ -13,78 +13,23 @@
 .brand {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 9px;
   font-weight: 700;
-  font-size: 14px;
-  color: var(--color-primary);
+  font-size: 15px;
+  color: var(--color-text);
+  letter-spacing: -0.4px;
   flex-shrink: 0;
 }
 
 .brand-icon {
   font-size: 18px;
-}
-
-.menu-bar {
-  display: flex;
-  gap: 2px;
-  margin-left: 12px;
-}
-
-.menu-item {
-  position: relative;
-}
-
-.menu-trigger {
-  padding: 4px 10px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
   border-radius: 0;
-  font-size: 13px;
-  color: var(--color-text);
-  transition: background 0.15s;
-}
-
-.menu-trigger:hover,
-.menu-item.open .menu-trigger {
-  background: var(--color-hover);
-}
-
-.menu-dropdown {
-  display: none;
-  position: absolute;
-  top: 100%;
-  left: 0;
-  min-width: 220px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 0;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  padding: 4px;
-  z-index: 200;
-}
-
-.menu-item.open .menu-dropdown {
-  display: block;
-}
-
-.menu-dropdown button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 6px 12px;
-  border-radius: 0;
-  text-align: left;
-  font-size: 13px;
-  transition: background 0.1s;
-}
-
-.menu-dropdown button:hover {
-  background: var(--color-hover);
-}
-
-.menu-dropdown .shortcut {
-  color: var(--color-muted);
-  font-size: 11px;
-  margin-left: 24px;
+  background: var(--color-accent-soft);
+  color: var(--color-primary);
 }
 
 .topbar-center {
@@ -96,8 +41,9 @@
 #doc-name {
   text-align: center;
   border: 1px solid transparent;
-  background: transparent;
-  padding: 4px 12px;
+  background: var(--color-control);
+  padding: 7px 12px;
+  font-weight: 500;
   border-radius: 0;
   font-size: 13px;
   width: 240px;
@@ -146,6 +92,7 @@
 
 .zoom-display {
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
   color: var(--color-muted);
   min-width: 40px;
   text-align: center;
@@ -158,10 +105,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: var(--color-surface);
+  background: var(--color-rail);
   border-right: 1px solid var(--color-border);
-  padding: 8px 0;
-  gap: 2px;
+  padding: 12px 0;
+  gap: 4px;
   overflow-y: auto;
   overflow-x: hidden;
   z-index: 50;
@@ -180,7 +127,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .tool-btn {
@@ -199,8 +146,9 @@
 }
 
 .tool-btn.active {
-  background: var(--color-primary);
-  color: white;
+  background: var(--color-accent-soft);
+  color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
 .tool-divider {
@@ -209,5 +157,54 @@
   background: var(--color-border);
   margin: 6px 0;
   flex-shrink: 0;
+}
+
+.tool-collection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tool-collection > summary {
+  list-style: none;
+}
+
+.tool-collection > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tool-collection[open] > .tool-collection-toggle {
+  color: var(--color-primary);
+  background: var(--color-hover);
+}
+
+.tool-collection-items {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+#left-toolbar .tool-collection-items .component-item {
+  width: 40px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text);
+}
+
+#left-toolbar .tool-collection-items .component-item:hover {
+  border: 0;
+  background: var(--color-hover);
+}
+
+#left-toolbar .tool-collection-items .component-icon {
+  width: 20px;
+  height: 20px;
+  overflow: visible;
+  color: currentColor;
 }
 /* #endregion */

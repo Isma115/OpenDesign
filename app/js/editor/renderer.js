@@ -1,9 +1,9 @@
 // #region Renderizador SVG | Funcionalidad | renderizado de elementos en el lienzo SVG
-import { getElementBounds, getLocalConnectionPoint } from './geometry.js';
-import { getState } from './state.js';
-import { getConnectionPoint, getConnectionPointDirection, routeConnector } from './connectors.js';
-import { getTheme, updateCanvasTheme } from './theme.js';
-import { getCssClassForElement, getSpecificCssForElement } from './css-template.js';
+import { getElementBounds, getLocalConnectionPoint } from '../core/geometry.js';
+import { getState } from '../core/state.js';
+import { getConnectionPoint, getConnectionPointDirection, routeConnector } from '../model/connectors.js';
+import { getTheme, updateCanvasTheme } from '../ui/theme.js';
+import { getCssClassForElement, getSpecificCssForElement } from '../core/css-template.js';
 
 export const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -16,6 +16,7 @@ let _guideLayer = null;
 let _previewLayer = null;
 let _gridLayer = null;
 let _defs = null;
+let _textMeasureContext = null;
 
 export function initRenderer() {
   _svgCanvas = document.getElementById('canvas');
@@ -447,11 +448,76 @@ function _createShapeSVG(element) {
   }
 }
 
+function _measureTextWidth(value, textStyle) {
+  const fontSize = Number(textStyle?.fontSize) || 16;
+  const fontWeight = textStyle?.fontWeight || 400;
+  const fontFamily = textStyle?.fontFamily || 'Inter, Arial, sans-serif';
+  if (!_textMeasureContext) {
+    _textMeasureContext = document.createElement('canvas').getContext('2d');
+  }
+  if (!_textMeasureContext) return String(value).length * fontSize * 0.6;
+  _textMeasureContext.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+  return _textMeasureContext.measureText(value).width;
+}
+
+function _splitTextWord(word, maxWidth, textStyle) {
+  const parts = [];
+  let part = '';
+  for (const character of word) {
+    const candidate = part + character;
+    if (!part || _measureTextWidth(candidate, textStyle) <= maxWidth) {
+      part = candidate;
+    } else {
+      parts.push(part);
+      part = character;
+    }
+  }
+  if (part) parts.push(part);
+  return parts;
+}
+
+function _wrapText(value, maxWidth, textStyle) {
+  const lines = [];
+  for (const paragraph of String(value ?? '').split(/\r?\n/)) {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      lines.push('');
+      continue;
+    }
+
+    let line = '';
+    for (const word of words) {
+      const parts = _splitTextWord(word, maxWidth, textStyle);
+      parts.forEach((part, index) => {
+        const candidate = line ? `${line} ${part}` : part;
+        if (line && _measureTextWidth(candidate, textStyle) > maxWidth) {
+          lines.push(line);
+          line = part;
+        } else {
+          line = candidate;
+        }
+        if (index < parts.length - 1) {
+          lines.push(line);
+          line = '';
+        }
+      });
+    }
+    if (line) lines.push(line);
+  }
+  return lines.length ? lines : [''];
+}
+
 function _createTextSVG(element, textStyle = element.text) {
   const bounds = getElementBounds(element);
   const text = document.createElementNS(SVG_NS, 'text');
   const padding = 8;
-  let textX, textY, anchor, dy;
+  const fontSize = Number(textStyle?.fontSize) || 16;
+  const fontFamily = textStyle?.fontFamily || 'Inter, Arial, sans-serif';
+  const fontWeight = textStyle?.fontWeight || 400;
+  const lineHeight = fontSize * 1.2;
+  const maxWidth = Math.max(1, bounds.width - padding * 2);
+  const lines = _wrapText(element.text?.value || '', maxWidth, textStyle);
+  let textX, textY, anchor;
   const align = textStyle?.align || 'center';
   const vAlign = textStyle?.verticalAlign || 'middle';
 
@@ -467,24 +533,29 @@ function _createTextSVG(element, textStyle = element.text) {
   }
 
   if (vAlign === 'top') {
-    textY = bounds.y + padding + (textStyle?.fontSize || 16);
+    textY = bounds.y + padding + fontSize;
   } else if (vAlign === 'bottom') {
-    textY = bounds.y + bounds.height - padding;
+    textY = bounds.y + bounds.height - padding - (lines.length - 1) * lineHeight;
   } else {
-    textY = bounds.y + bounds.height / 2;
-    dy = '0.35em';
+    textY = bounds.y + bounds.height / 2 - (lines.length - 1) * lineHeight / 2;
   }
 
   text.setAttribute('x', textX);
   text.setAttribute('y', textY);
   text.setAttribute('text-anchor', anchor);
-  text.setAttribute('font-family', textStyle?.fontFamily || 'Inter, Arial, sans-serif');
-  text.setAttribute('font-size', textStyle?.fontSize || 16);
-  text.setAttribute('font-weight', textStyle?.fontWeight || 400);
+  text.setAttribute('font-family', fontFamily);
+  text.setAttribute('font-size', fontSize);
+  text.setAttribute('font-weight', fontWeight);
   text.setAttribute('fill', textStyle?.color || '#111827');
-  if (dy) text.setAttribute('dy', dy);
   text.classList.add('text-element');
-  text.textContent = _sanitizeText(element.text?.value || '');
+  lines.forEach((line, index) => {
+    const tspan = document.createElementNS(SVG_NS, 'tspan');
+    tspan.setAttribute('x', textX);
+    if (index === 0 && vAlign === 'middle') tspan.setAttribute('dy', '0.35em');
+    if (index > 0) tspan.setAttribute('dy', lineHeight);
+    tspan.textContent = _sanitizeText(line);
+    text.appendChild(tspan);
+  });
   return text;
 }
 
@@ -578,7 +649,8 @@ function _renderConnector(connector, docModel = getState().document) {
     });
   }
 
-  _connectorLayer.appendChild(g);
+  // Respetar el orden z junto a las figuras: los marcos rellenos no deben ocultar las conexiones.
+  _shapeLayer.appendChild(g);
 }
 
 function _renderGroup(group, docModel) {

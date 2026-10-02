@@ -1,5 +1,5 @@
 // #region Creacion de figuras | Funcionalidad | fabricas de formas geometricas y nodos de flujo
-import { getNextZIndex } from './state.js';
+import { getNextZIndex } from '../core/state.js';
 
 const DEFAULT_CONNECTION_POINTS = [
   { id: 'top', x: 0.5, y: 0 },
@@ -10,29 +10,29 @@ const DEFAULT_CONNECTION_POINTS = [
 
 // Paleta para modo claro
 const PALETTE_LIGHT = {
-  default: { fill: '#dbeafe', stroke: '#111827', text: '#111827' },
-  flowStart: { fill: '#dcfce7', stroke: '#16a34a', text: '#14532d' },
-  flowProcess: { fill: '#dbeafe', stroke: '#2563eb', text: '#1e3a8a' },
-  flowDecision: { fill: '#fef3c7', stroke: '#d97706', text: '#78350f' },
-  flowIO: { fill: '#ede9fe', stroke: '#7c3aed', text: '#4c1d95' },
-  flowDatabase: { fill: '#fce7f3', stroke: '#db2777', text: '#831843' },
-  flowDocument: { fill: '#f0fdf4', stroke: '#15803d', text: '#14532d' },
-  flowSubprocess: { fill: '#eff6ff', stroke: '#1d4ed8', text: '#1e3a8a' },
-  note: { fill: '#fef9c3', stroke: '#eab308', text: '#713f12' },
+  default: { fill: '#60a5fa', stroke: '#60a5fa', text: '#0f172a' },
+  flowStart: { fill: '#4ade80', stroke: '#4ade80', text: '#14532d' },
+  flowProcess: { fill: '#60a5fa', stroke: '#60a5fa', text: '#1e3a8a' },
+  flowDecision: { fill: '#fbbf24', stroke: '#fbbf24', text: '#78350f' },
+  flowIO: { fill: '#a78bfa', stroke: '#a78bfa', text: '#4c1d95' },
+  flowDatabase: { fill: '#f472b6', stroke: '#f472b6', text: '#831843' },
+  flowDocument: { fill: '#4ade80', stroke: '#4ade80', text: '#14532d' },
+  flowSubprocess: { fill: '#60a5fa', stroke: '#60a5fa', text: '#1e3a8a' },
+  note: { fill: '#facc15', stroke: '#facc15', text: '#713f12' },
   frame: { fill: 'none', stroke: '#475569', text: '#64748b' }
 };
 
 // Paleta para modo oscuro
 const PALETTE_DARK = {
-  default: { fill: '#334155', stroke: '#94a3b8', text: '#f1f5f9' },
-  flowStart: { fill: '#065f46', stroke: '#10b981', text: '#ecfdf5' },
-  flowProcess: { fill: '#1e3a8a', stroke: '#3b82f6', text: '#eff6ff' },
-  flowDecision: { fill: '#78350f', stroke: '#f59e0b', text: '#fffbeb' },
-  flowIO: { fill: '#4c1d95', stroke: '#8b5cf6', text: '#f5f3ff' },
-  flowDatabase: { fill: '#831843', stroke: '#ec4899', text: '#fdf2f8' },
-  flowDocument: { fill: '#14532d', stroke: '#22c55e', text: '#f0fdf4' },
-  flowSubprocess: { fill: '#1e3a8a', stroke: '#60a5fa', text: '#eff6ff' },
-  note: { fill: '#713f12', stroke: '#eab308', text: '#fef9c3' },
+  default: { fill: '#64748b', stroke: '#64748b', text: '#f8fafc' },
+  flowStart: { fill: '#10b981', stroke: '#10b981', text: '#ecfdf5' },
+  flowProcess: { fill: '#3b82f6', stroke: '#3b82f6', text: '#eff6ff' },
+  flowDecision: { fill: '#f59e0b', stroke: '#f59e0b', text: '#fffbeb' },
+  flowIO: { fill: '#8b5cf6', stroke: '#8b5cf6', text: '#f5f3ff' },
+  flowDatabase: { fill: '#ec4899', stroke: '#ec4899', text: '#fdf2f8' },
+  flowDocument: { fill: '#22c55e', stroke: '#22c55e', text: '#f0fdf4' },
+  flowSubprocess: { fill: '#60a5fa', stroke: '#60a5fa', text: '#eff6ff' },
+  note: { fill: '#eab308', stroke: '#eab308', text: '#fef9c3' },
   frame: { fill: 'none', stroke: '#94a3b8', text: '#94a3b8' }
 };
 
@@ -74,7 +74,7 @@ function _baseElement(overrides) {
     locked: false,
     visible: true,
     zIndex: getNextZIndex(),
-    style: { ...DEFAULT_STYLE, fill: palette.fill, stroke: palette.stroke },
+    style: { ...DEFAULT_STYLE, fill: palette.fill, stroke: palette.fill },
     text: { ...DEFAULT_TEXT, color: palette.text },
     connectionPoints: DEFAULT_CONNECTION_POINTS.map(p => ({ ...p })),
     ...overrides
@@ -207,7 +207,7 @@ export function createNote(x, y) {
     x, y,
     width: 180,
     height: 120,
-    style: { ...DEFAULT_STYLE, fill: palette.note.fill, stroke: palette.note.stroke, strokeWidth: 1 },
+    style: { ...DEFAULT_STYLE, fill: palette.note.fill, stroke: palette.note.fill, strokeWidth: 1 },
     text: { ...DEFAULT_TEXT, value: 'Nota', align: 'left', fontSize: 13, color: palette.note.text }
   });
 }
@@ -231,7 +231,7 @@ export function createFlowStart(x, y, width, height) {
     x, y,
     width: Math.max(width, 120),
     height: Math.max(height, 50),
-    style: { ...DEFAULT_STYLE, fill: palette.flowStart.fill, stroke: palette.flowStart.stroke },
+    style: { ...DEFAULT_STYLE, fill: palette.flowStart.fill, stroke: palette.flowStart.fill },
     text: { ...DEFAULT_TEXT, value: 'Inicio', color: palette.flowStart.text }
   });
 }
@@ -243,7 +243,7 @@ export function createFlowProcess(x, y, width, height) {
     x, y,
     width: Math.max(width, 140),
     height: Math.max(height, 60),
-    style: { ...DEFAULT_STYLE, fill: palette.flowProcess.fill, stroke: palette.flowProcess.stroke },
+    style: { ...DEFAULT_STYLE, fill: palette.flowProcess.fill, stroke: palette.flowProcess.fill },
     text: { ...DEFAULT_TEXT, value: 'Proceso', color: palette.flowProcess.text }
   });
 }
@@ -255,7 +255,7 @@ export function createFlowDecision(x, y, width, height) {
     x, y,
     width: Math.max(width, 120),
     height: Math.max(height, 80),
-    style: { ...DEFAULT_STYLE, fill: palette.flowDecision.fill, stroke: palette.flowDecision.stroke },
+    style: { ...DEFAULT_STYLE, fill: palette.flowDecision.fill, stroke: palette.flowDecision.fill },
     text: { ...DEFAULT_TEXT, value: 'Decision?', color: palette.flowDecision.text }
   });
 }
@@ -267,7 +267,7 @@ export function createFlowIO(x, y, width, height) {
     x, y,
     width: Math.max(width, 140),
     height: Math.max(height, 60),
-    style: { ...DEFAULT_STYLE, fill: palette.flowIO.fill, stroke: palette.flowIO.stroke },
+    style: { ...DEFAULT_STYLE, fill: palette.flowIO.fill, stroke: palette.flowIO.fill },
     text: { ...DEFAULT_TEXT, value: 'Entrada/Salida', color: palette.flowIO.text }
   });
 }
@@ -279,7 +279,7 @@ export function createFlowDatabase(x, y, width, height) {
     x, y,
     width: Math.max(width, 80),
     height: Math.max(height, 100),
-    style: { ...DEFAULT_STYLE, fill: palette.flowDatabase.fill, stroke: palette.flowDatabase.stroke },
+    style: { ...DEFAULT_STYLE, fill: palette.flowDatabase.fill, stroke: palette.flowDatabase.fill },
     text: { ...DEFAULT_TEXT, value: 'BD', color: palette.flowDatabase.text }
   });
 }
@@ -291,7 +291,7 @@ export function createFlowDocument(x, y, width, height) {
     x, y,
     width: Math.max(width, 120),
     height: Math.max(height, 80),
-    style: { ...DEFAULT_STYLE, fill: palette.flowDocument.fill, stroke: palette.flowDocument.stroke },
+    style: { ...DEFAULT_STYLE, fill: palette.flowDocument.fill, stroke: palette.flowDocument.fill },
     text: { ...DEFAULT_TEXT, value: 'Documento', color: palette.flowDocument.text }
   });
 }
@@ -303,7 +303,7 @@ export function createFlowSubprocess(x, y, width, height) {
     x, y,
     width: Math.max(width, 140),
     height: Math.max(height, 60),
-    style: { ...DEFAULT_STYLE, fill: palette.flowSubprocess.fill, stroke: palette.flowSubprocess.stroke },
+    style: { ...DEFAULT_STYLE, fill: palette.flowSubprocess.fill, stroke: palette.flowSubprocess.fill },
     text: { ...DEFAULT_TEXT, value: 'Subproceso', color: palette.flowSubprocess.text }
   });
 }

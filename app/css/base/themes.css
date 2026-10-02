@@ -1,0 +1,122 @@
+/* #region Sistema de temas | Estilo | variables CSS y tema claro */
+:root {
+  --color-bg: #dce2e9;
+  --color-surface: #e8ecf0;
+  --color-border: #b9c4d1;
+  --color-text: #192338;
+  --color-muted: #526177;
+  --color-primary: #3864c7;
+  --color-primary-hover: #294da4;
+  --color-hover: #dce2e9;
+  --color-canvas-bg: #cbd3de;
+  --color-danger: #ef4444;
+  --color-accent-soft: #d4dff4;
+  --color-control: #e4e9ef;
+  --color-header: #d2dae5;
+  --color-rail: #cbd5e2;
+  --color-panel: #e3e5e2;
+  --color-secondary: #27766f;
+  --color-secondary-soft: #d2e5df;
+  --shadow-soft: 0 2px 8px rgba(20, 35, 65, 0.06);
+  --toolbar-width: 56px;
+  --right-panel-width: 260px;
+  --topbar-height: 56px;
+  --statusbar-height: 30px;
+}
+
+[data-theme="dark"] {
+  --color-bg: #222b39;
+  --color-surface: #252f3e;
+  --color-border: #46536a;
+  --color-text: #f0f3f9;
+  --color-muted: #c1ccdc;
+  --color-primary: #a4c0ff;
+  --color-primary-hover: #a1b8ff;
+  --color-hover: #2a374b;
+  --color-canvas-bg: #283548;
+  --color-accent-soft: #2d4061;
+  --color-control: #2c384a;
+  --color-header: #2a374b;
+  --color-rail: #253247;
+  --color-panel: #282f3a;
+  --color-secondary: #a0dbce;
+  --color-secondary-soft: #2b4541;
+  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+[data-theme="dark"] #canvas {
+  background: #283548 !important;
+}
+
+[data-theme="dark"] .grid-bg {
+  stroke: #53637a !important;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: #252f3e;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #63738a;
+  border-radius: 0;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #7d8da3;
+}
+
+[data-theme="dark"] #panel-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+[data-theme="dark"] #panel-content::-webkit-scrollbar-thumb {
+  background: #63738a;
+}
+
+[data-theme="dark"] #left-toolbar::-webkit-scrollbar {
+  width: 3px;
+}
+
+[data-theme="dark"] #left-toolbar::-webkit-scrollbar-thumb {
+  background: #63738a;
+}
+
+::selection {
+  background: rgba(37, 99, 235, 0.2);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --right-panel-width: 220px;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --right-panel-width: 0px;
+    --toolbar-width: 48px;
+  }
+
+  #workspace {
+    grid-template-columns: var(--toolbar-width) 1fr 0;
+  }
+
+  #right-panel {
+    display: none;
+  }
+
+  #right-panel-resize-handle {
+    display: none;
+  }
+}
+/* #endregion */

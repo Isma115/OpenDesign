@@ -1,8 +1,8 @@
 // #region Portapapeles de elementos | Funcionalidad | copiado y pegado consistente de elementos y grupos
-import { getState, getSelectedElements, addElement, setSelection } from './state.js';
-import { renderDocument } from './renderer.js';
-import { refreshSelection } from './selection.js';
-import { commitAction, snapshotElements } from './history.js';
+import { getState, getSelectedElements, addElement, setSelection } from '../core/state.js';
+import { renderDocument } from '../editor/renderer.js';
+import { refreshSelection } from '../editor/selection.js';
+import { commitAction, snapshotElements } from '../core/history.js';
 
 const PASTE_OFFSET = 40;
 

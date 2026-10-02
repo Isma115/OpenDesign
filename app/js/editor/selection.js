@@ -1,8 +1,8 @@
 // #region Sistema de seleccion | Funcionalidad | seleccion y hit testing de elementos
-import { getState, getElementById, getSelectedElements, setSelection, clearSelection } from './state.js';
-import { getElementBounds, pointInElement, getMultiSelectionBounds, rectsIntersect } from './geometry.js';
+import { getState, getElementById, getSelectedElements, setSelection, clearSelection } from '../core/state.js';
+import { getElementBounds, pointInElement, getMultiSelectionBounds, rectsIntersect } from '../core/geometry.js';
 import { renderSelection, clearSelection as clearSelectionRender, clearGuides } from './renderer.js';
-import { getConnectionPoint, isConnectableElement } from './connectors.js';
+import { getConnectionPoint, isConnectableElement } from '../model/connectors.js';
 
 let _selectionBox = null;
 const MIN_LINEAR_HIT_RADIUS_PX = 12;

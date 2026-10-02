@@ -1,63 +1,41 @@
 // #region Interfaz de usuario | Funcionalidad | inicializacion y gestion de la UI
-import { getState, updateElement, updateElements, updateDocument, setSelection, clearSelection, getElementById, getSelectedElements, setActiveTool, addElement, removeElement, resetDocument } from './state.js';
-import { renderDocument, applyViewport } from './renderer.js';
-import { refreshSelection } from './selection.js';
-import { commitAction, snapshotElements } from './history.js';
-import { downloadJSON, openJSON, handleFileImport, saveToLocal } from './storage.js';
-import { exportAsHTML, exportAsSVG, exportAsPNG } from './export.js';
-import { getShapeDisplayName, createGroup, createImage } from './shapes.js';
-import { zoomBy, setZoom, updateToolUI } from './keyboard.js';
-import { getElementBounds, getMultiSelectionBounds, screenToCanvas } from './geometry.js';
-import { updateConnectorPath, updateAllConnectorsForElement } from './connectors.js';
-import { createComponentGroup, getPendingChildren } from './components.js';
+import { getState, updateElement, updateElements, updateDocument, setSelection, clearSelection, getElementById, getSelectedElements, setActiveTool, addElement, removeElement, resetDocument } from '../core/state.js';
+import { renderDocument, applyViewport } from '../editor/renderer.js';
+import { refreshSelection } from '../editor/selection.js';
+import { commitAction, snapshotElements } from '../core/history.js';
+import { downloadJSON, openJSON, handleFileImport, saveToLocal } from '../io/storage.js';
+import { exportAsHTML, exportAsSVG, exportAsPNG } from '../io/export.js';
+import { getShapeDisplayName, createGroup, createImage } from '../model/shapes.js';
+import { zoomBy, setZoom, updateToolUI } from '../editor/keyboard.js';
+import { getElementBounds, getMultiSelectionBounds, screenToCanvas } from '../core/geometry.js';
+import { updateConnectorPath, updateAllConnectorsForElement } from '../model/connectors.js';
+import { createComponentGroup, getPendingChildren } from '../model/components.js';
 import { toggleTheme } from './theme.js';
-import { createExampleDocument } from './example.js';
-import { loadDocument, setDirty } from './state.js';
-import { copySelectedElements, pasteClipboardElements } from './clipboard.js';
+import { createExampleDocument } from '../model/example.js';
+import { loadDocument, setDirty } from '../core/state.js';
+import { copySelectedElements, pasteClipboardElements } from '../io/clipboard.js';
 import {
   getCssClassForElement,
   getSpecificCssForElement
-} from './css-template.js';
+} from '../core/css-template.js';
 
 let _rotationInputSnapshot = null;
 let _rotationInputElementId = null;
 let _specificCssInputSnapshot = null;
 let _elementPropertyInputSnapshot = null;
 let _elementPropertyInputKey = null;
+const RIGHT_PANEL_WIDTH_KEY = 'geoflow_right_panel_width';
 
 export function initUI() {
-  _initMenuBars();
   _initPanelTabs();
   _initRightPanelToggle();
+  _initRightPanelResize();
   _initPropertyInputs();
   _initTopbarActions();
   _initFileInput();
   _initComponentDrag();
   _initDocName();
   _updatePropertiesPanel();
-}
-
-function _initMenuBars() {
-  const menuItems = document.querySelectorAll('.menu-item');
-  menuItems.forEach(item => {
-    const trigger = item.querySelector('.menu-trigger');
-    trigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const wasOpen = item.classList.contains('open');
-      menuItems.forEach(m => m.classList.remove('open'));
-      if (!wasOpen) item.classList.add('open');
-    });
-  });
-  document.addEventListener('click', () => {
-    menuItems.forEach(m => m.classList.remove('open'));
-  });
-  document.querySelectorAll('.menu-dropdown button[data-action]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      _handleAction(btn.dataset.action);
-      menuItems.forEach(m => m.classList.remove('open'));
-    });
-  });
 }
 
 function _initRightPanelToggle() {
@@ -73,6 +51,81 @@ function _initRightPanelToggle() {
     button.setAttribute('aria-label', label);
     button.title = label;
     applyViewport(getState().viewport);
+  });
+}
+
+function _initRightPanelResize() {
+  const handle = document.getElementById('right-panel-resize-handle');
+  const panel = document.getElementById('right-panel');
+  const workspace = document.getElementById('workspace');
+  if (!handle || !panel || !workspace) return;
+
+  const minWidth = Number(handle.getAttribute('aria-valuemin'));
+  const maxWidth = Number(handle.getAttribute('aria-valuemax'));
+  let pointerId = null;
+  let startX = 0;
+  let startWidth = 0;
+
+  const setWidth = width => {
+    const nextWidth = Math.round(Math.min(maxWidth, Math.max(minWidth, width)));
+    document.documentElement.style.setProperty('--right-panel-width', `${nextWidth}px`);
+    handle.setAttribute('aria-valuenow', String(nextWidth));
+    applyViewport(getState().viewport);
+  };
+
+  const persistWidth = () => {
+    localStorage.setItem(RIGHT_PANEL_WIDTH_KEY, handle.getAttribute('aria-valuenow'));
+  };
+
+  const savedWidth = Number.parseInt(localStorage.getItem(RIGHT_PANEL_WIDTH_KEY), 10);
+  if (Number.isFinite(savedWidth) && panel.getBoundingClientRect().width > 0) {
+    setWidth(savedWidth);
+  } else {
+    handle.setAttribute('aria-valuenow', String(Math.round(panel.getBoundingClientRect().width)));
+  }
+
+  handle.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    pointerId = e.pointerId;
+    startX = e.clientX;
+    startWidth = panel.getBoundingClientRect().width;
+    handle.setPointerCapture(pointerId);
+    workspace.classList.add('right-panel-resizing');
+    e.preventDefault();
+  });
+
+  handle.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== pointerId) return;
+    setWidth(startWidth + startX - e.clientX);
+  });
+
+  const stopResize = (e) => {
+    if (e.pointerId !== pointerId) return;
+    pointerId = null;
+    workspace.classList.remove('right-panel-resizing');
+    persistWidth();
+    if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
+  };
+
+  handle.addEventListener('pointerup', stopResize);
+  handle.addEventListener('pointercancel', stopResize);
+  handle.addEventListener('lostpointercapture', () => {
+    if (pointerId !== null) persistWidth();
+    pointerId = null;
+    workspace.classList.remove('right-panel-resizing');
+  });
+
+  handle.addEventListener('keydown', (e) => {
+    const currentWidth = panel.getBoundingClientRect().width;
+    let nextWidth;
+    if (e.key === 'ArrowLeft') nextWidth = currentWidth + 10;
+    if (e.key === 'ArrowRight') nextWidth = currentWidth - 10;
+    if (e.key === 'Home') nextWidth = minWidth;
+    if (e.key === 'End') nextWidth = maxWidth;
+    if (nextWidth === undefined) return;
+    e.preventDefault();
+    setWidth(nextWidth);
+    persistWidth();
   });
 }
 
@@ -105,6 +158,27 @@ function _initPropertyInputs() {
       }
     }
   };
+
+  bind('prop-name', () => {
+    const selected = getSelectedElements();
+    if (selected.length !== 1) return;
+    const el = selected[0];
+    const name = document.getElementById('prop-name').value.trim();
+    if (name === (el.name || '')) return;
+    const before = snapshotElements();
+    const patch = { name };
+    if (el.type === 'group') {
+      patch.componentType = el.componentType || (el.name || '').toLowerCase();
+      const className = getCssClassForElement(el);
+      if (className) patch.css = { ...el.css, className };
+    }
+    updateElement(el.id, patch);
+    commitAction({ type: 'snapshot', before, after: snapshotElements() });
+    renderDocument(getState().document);
+    refreshSelection();
+    _updatePropertiesPanel();
+    _updateLayersPanel();
+  });
 
   bind('prop-x', (commit) => _updatePropFromInput('x', parseFloat, commit), { live: true });
   bind('prop-y', (commit) => _updatePropFromInput('y', parseFloat, commit), { live: true });
@@ -430,6 +504,10 @@ function _handleAction(action) {
   }
 }
 
+export function handleMenuAction(action) {
+  _handleAction(action);
+}
+
 export function loadExampleProject() {
   const state = getState();
   if (state.dirty && !confirm('Hay cambios sin guardar. Cargar el proyecto de ejemplo?')) return;
@@ -613,11 +691,13 @@ function updateAllConns(elementId) {
 
 function _updatePropertiesPanel() {
   const state = getState();
+  const propIdentity = document.getElementById('properties-identity');
   const propCanvas = document.getElementById('properties-canvas');
   const propShape = document.getElementById('properties-shape');
   const propConnector = document.getElementById('properties-connector');
   const propEmpty = document.getElementById('properties-empty');
 
+  if (propIdentity) propIdentity.style.display = 'none';
   if (propCanvas) propCanvas.style.display = 'none';
   if (propShape) propShape.style.display = 'none';
   if (propConnector) propConnector.style.display = 'none';
@@ -632,6 +712,8 @@ function _updatePropertiesPanel() {
       if (propEmpty) propEmpty.style.display = 'block';
       return;
     }
+    if (propIdentity) propIdentity.style.display = 'block';
+    _setVal('prop-name', el.name || '');
     if (el.type === 'connector') {
       if (propConnector) propConnector.style.display = 'block';
       _fillConnectorProps(el);
@@ -891,9 +973,9 @@ function _updateLayersPanel() {
     const item = document.createElement('div');
     item.className = 'layer-item';
     if (state.selectedElementIds.includes(el.id)) item.classList.add('selected');
-    const name = el.type === 'connector' ? 'Conector'
-      : el.type === 'group' ? (el.name || 'Grupo')
-      : getShapeDisplayName(el.shape);
+    const name = el.name || (el.type === 'connector' ? 'Conector'
+      : el.type === 'group' ? 'Grupo'
+      : getShapeDisplayName(el.shape));
     item.innerHTML = `
       <span class="layer-icon">${_getLayerIconSvg(el)}</span>
       <span class="layer-name">${_escapeAttribute(name)}</span>
@@ -1114,6 +1196,7 @@ function _updateStatusSaved() {
 
 export function refreshPropertiesPanel() {
   _updatePropertiesPanel();
+  if (document.querySelector('.panel-tab[data-tab="layers"].active')) _updateLayersPanel();
 }
 
 export function refreshLayersPanel() {

@@ -20,6 +20,6 @@ Permite conservar, recuperar y transferir el documento GeoFlow mediante almacena
 
 ## Evidencia de código
 
-- `app/js/storage.js`
+- `app/js/io/storage.js`
 - `electron-main.js`
 - `preload.js`

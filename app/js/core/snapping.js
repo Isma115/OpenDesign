@@ -11,7 +11,7 @@ export function snapElement(element, dx, dy) {
   let newY = element.y + dy;
 
   if (config.enabled && config.snapToGrid) {
-    const gridSize = state.document.canvas.grid.size || 16;
+    const gridSize = state.document.canvas.grid.size || 4;
     newX = snapToGrid(newX, gridSize);
     newY = snapToGrid(newY, gridSize);
   }
@@ -72,7 +72,7 @@ export function snapPoint(x, y) {
   const state = getState();
   const config = state.snapping;
   if (!config.enabled || !config.snapToGrid) return { x, y };
-  const gridSize = state.document.canvas.grid.size || 16;
+  const gridSize = state.document.canvas.grid.size || 4;
   return {
     x: snapToGrid(x, gridSize),
     y: snapToGrid(y, gridSize)

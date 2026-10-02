@@ -20,6 +20,6 @@ Permite convertir el documento actual en archivos JSON, HTML, SVG o PNG y conser
 
 ## Evidencia de código
 
-- `app/js/export.js`
-- `app/js/css-template.js`
-- `app/js/renderer.js`
+- `app/js/io/export.js`
+- `app/js/core/css-template.js`
+- `app/js/editor/renderer.js`

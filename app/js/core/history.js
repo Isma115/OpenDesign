@@ -1,7 +1,7 @@
 // #region Historial de cambios | Funcionalidad | deshacer y rehacer acciones
 import { getState, setState, loadDocument, setDirty } from './state.js';
-import { renderDocument } from './renderer.js';
-import { refreshSelection } from './selection.js';
+import { renderDocument } from '../editor/renderer.js';
+import { refreshSelection } from '../editor/selection.js';
 
 const MAX_HISTORY = 50;
 

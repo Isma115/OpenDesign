@@ -12,7 +12,7 @@ const _state = {
       background: '#ffffff',
       grid: {
         enabled: true,
-        size: 16,
+        size: 4,
         color: '#e5e7eb'
       },
       zoom: 1,
@@ -262,7 +262,7 @@ export function resetDocument() {
       width: 1920,
       height: 1080,
       background: '#ffffff',
-      grid: { enabled: true, size: 16, color: '#e5e7eb' },
+      grid: { enabled: true, size: 4, color: '#e5e7eb' },
       zoom: 1,
       pan: { x: 0, y: 0 }
     },

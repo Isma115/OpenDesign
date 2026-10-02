@@ -1,5 +1,5 @@
 // #region Componentes UI | Funcionalidad | creacion de componentes arrastrables
-import { getNextZIndex } from './state.js';
+import { getNextZIndex } from '../core/state.js';
 
 const _id = () => 'el_' + crypto.randomUUID().slice(0, 12);
 
@@ -51,7 +51,9 @@ export function createComponentGroup(compType, x, y) {
   };
   if (!Object.hasOwn(factories, compType)) return null;
   const factory = factories[compType];
-  return factory(x, y);
+  const group = factory(x, y);
+  group.componentType = compType;
+  return group;
 }
 
 function _baseStyle(overrides = {}) {
@@ -80,12 +82,24 @@ function _shapeEl(overrides) {
   };
 }
 
+function _lineEl(x1, y1, x2, y2, stroke, strokeWidth = 1, opacity = 0.7) {
+  return _shapeEl({
+    shape: 'line',
+    x: x1,
+    y: y1,
+    width: x2 - x1,
+    height: y2 - y1,
+    style: _baseStyle({ fill: 'none', stroke, strokeWidth, opacity }),
+    _lineData: { x1, y1, x2, y2 }
+  });
+}
+
 function _createButton(x, y) {
   const palette = getComponentPalette();
   const bgId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
-    id: bgId, shape: 'rectangle',
+    id: bgId, shape: 'roundedRectangle',
     x, y, width: 120, height: 40,
     style: _baseStyle({ fill: palette.button.fill, stroke: palette.button.stroke, strokeWidth: 1 }),
     text: _baseText({ value: 'Button', color: palette.button.text, fontSize: 14, fontWeight: 600 })
@@ -104,7 +118,7 @@ function _createInput(x, y) {
   const bgId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
-    id: bgId, shape: 'rectangle',
+    id: bgId, shape: 'roundedRectangle',
     x, y, width: 200, height: 36,
     style: _baseStyle({ fill: palette.input.fill, stroke: palette.input.stroke, strokeWidth: 1 }),
     text: _baseText({ value: 'Placeholder...', color: palette.input.text, align: 'left', fontSize: 13 })
@@ -121,18 +135,21 @@ function _createInput(x, y) {
 function _createTextarea(x, y) {
   const palette = getComponentPalette();
   const bgId = _id();
+  const line1 = _lineEl(x + 16, y + 28, x + 184, y + 28, palette.textarea.text, 1, 0.7);
+  const line2 = _lineEl(x + 16, y + 46, x + 166, y + 46, palette.textarea.text, 1, 0.7);
+  const line3 = _lineEl(x + 16, y + 64, x + 142, y + 64, palette.textarea.text, 1, 0.7);
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'rectangle',
     x, y, width: 200, height: 80,
     style: _baseStyle({ fill: palette.textarea.fill, stroke: palette.textarea.stroke, strokeWidth: 1 }),
-    text: _baseText({ value: '', align: 'left', verticalAlign: 'top', fontSize: 13, color: palette.textarea.text })
+    text: _baseText({ value: '', color: palette.textarea.text })
   });
-  _pendingChildren.set(groupId, [bg]);
+  _pendingChildren.set(groupId, [bg, line1, line2, line3]);
   return {
     id: groupId, type: 'group', name: 'Textarea',
     x, y, width: 200, height: 80, rotation: 0,
-    children: [bgId], css: _componentCss('gf-textarea'),
+    children: [bgId, line1.id, line2.id, line3.id], css: _componentCss('gf-textarea'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -143,7 +160,7 @@ function _createCheckbox(x, y) {
   const labelId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const box = _shapeEl({
-    id: boxId, shape: 'rectangle',
+    id: boxId, shape: 'roundedRectangle',
     x, y: y + 2, width: 18, height: 18,
     style: _baseStyle({ fill: palette.checkbox.fill, stroke: palette.checkbox.stroke, strokeWidth: 2 })
   });
@@ -165,17 +182,23 @@ function _createCheckbox(x, y) {
 function _createToggle(x, y) {
   const palette = getComponentPalette();
   const bgId = _id();
+  const knobId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
-    id: bgId, shape: 'rectangle',
+    id: bgId, shape: 'roundedRectangle',
     x, y, width: 44, height: 24,
     style: _baseStyle({ fill: palette.toggle.fill, stroke: palette.toggle.stroke, strokeWidth: 0 })
   });
-  _pendingChildren.set(groupId, [bg]);
+  const knob = _shapeEl({
+    id: knobId, shape: 'ellipse',
+    x: x + 24, y: y + 3, width: 18, height: 18,
+    style: _baseStyle({ fill: '#ffffff', stroke: palette.toggle.stroke, strokeWidth: 1 })
+  });
+  _pendingChildren.set(groupId, [bg, knob]);
   return {
     id: groupId, type: 'group', name: 'Toggle',
     x, y, width: 44, height: 24, rotation: 0,
-    children: [bgId], css: _componentCss('gf-toggle'),
+    children: [bgId, knobId], css: _componentCss('gf-toggle'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -183,12 +206,20 @@ function _createToggle(x, y) {
 function _createCard(x, y) {
   const palette = getComponentPalette();
   const bgId = _id();
+  const headerId = _id();
   const titleId = _id();
+  const line1 = _lineEl(x + 16, y + 78, x + 176, y + 78, palette.card.text, 1, 0.55);
+  const line2 = _lineEl(x + 16, y + 102, x + 136, y + 102, palette.card.text, 1, 0.55);
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'rectangle',
     x, y, width: 240, height: 160,
     style: _baseStyle({ fill: palette.card.fill, stroke: palette.card.stroke, strokeWidth: 1 })
+  });
+  const header = _shapeEl({
+    id: headerId, shape: 'rectangle',
+    x, y, width: 240, height: 36,
+    style: _baseStyle({ fill: palette.card.stroke, stroke: palette.card.stroke, strokeWidth: 0, opacity: 0.25 })
   });
   const title = _shapeEl({
     id: titleId, shape: 'text', type: 'text',
@@ -196,11 +227,11 @@ function _createCard(x, y) {
     style: _baseStyle({ fill: 'none', stroke: 'none', strokeWidth: 0 }),
     text: _baseText({ value: 'Card Title', align: 'left', fontSize: 16, fontWeight: 600, color: palette.card.text })
   });
-  _pendingChildren.set(groupId, [bg, title]);
+  _pendingChildren.set(groupId, [bg, header, title, line1, line2]);
   return {
     id: groupId, type: 'group', name: 'Card',
     x, y, width: 240, height: 160, rotation: 0,
-    children: [bgId, titleId], css: _componentCss('gf-card'),
+    children: [bgId, headerId, titleId, line1.id, line2.id], css: _componentCss('gf-card'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -210,7 +241,7 @@ function _createAvatar(x, y) {
   const bgId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
-    id: bgId, shape: 'rectangle',
+    id: bgId, shape: 'ellipse',
     x, y, width: 48, height: 48,
     style: _baseStyle({ fill: palette.avatar.fill, stroke: palette.avatar.stroke, strokeWidth: 1 }),
     text: _baseText({ value: 'A', fontSize: 18, fontWeight: 600, color: palette.avatar.text })
@@ -227,18 +258,34 @@ function _createAvatar(x, y) {
 function _createNavbar(x, y) {
   const palette = getComponentPalette();
   const bgId = _id();
+  const logoId = _id();
+  const titleId = _id();
+  const link1 = _lineEl(x + 96, y + 24, x + 176, y + 24, palette.navbar.text, 2, 0.85);
+  const link2 = _lineEl(x + 216, y + 24, x + 296, y + 24, palette.navbar.text, 2, 0.85);
+  const link3 = _lineEl(x + 336, y + 24, x + 416, y + 24, palette.navbar.text, 2, 0.85);
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'rectangle',
     x, y, width: 600, height: 48,
     style: _baseStyle({ fill: palette.navbar.fill, stroke: palette.navbar.stroke, strokeWidth: 0 }),
-    text: _baseText({ value: 'Navbar', color: palette.navbar.text, fontSize: 16, fontWeight: 600, align: 'left' })
+    text: _baseText({ value: '', color: palette.navbar.text })
   });
-  _pendingChildren.set(groupId, [bg]);
+  const logo = _shapeEl({
+    id: logoId, shape: 'ellipse',
+    x: x + 16, y: y + 12, width: 24, height: 24,
+    style: _baseStyle({ fill: palette.navbar.text, stroke: palette.navbar.text, strokeWidth: 0 })
+  });
+  const title = _shapeEl({
+    id: titleId, shape: 'text', type: 'text',
+    x: x + 48, y: y + 10, width: 40, height: 28,
+    style: _baseStyle({ fill: 'none', stroke: 'none', strokeWidth: 0 }),
+    text: _baseText({ value: 'Navbar', align: 'left', fontSize: 14, fontWeight: 600, color: palette.navbar.text })
+  });
+  _pendingChildren.set(groupId, [bg, logo, title, link1, link2, link3]);
   return {
     id: groupId, type: 'group', name: 'Navbar',
     x, y, width: 600, height: 48, rotation: 0,
-    children: [bgId], css: _componentCss('gf-navbar'),
+    children: [bgId, logoId, titleId, link1.id, link2.id, link3.id], css: _componentCss('gf-navbar'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -246,18 +293,35 @@ function _createNavbar(x, y) {
 function _createSidebar(x, y) {
   const palette = getComponentPalette();
   const bgId = _id();
+  const headerId = _id();
+  const titleId = _id();
+  const menu1 = _lineEl(x + 24, y + 92, x + 168, y + 92, palette.sidebar.text, 2, 0.75);
+  const menu2 = _lineEl(x + 24, y + 132, x + 150, y + 132, palette.sidebar.text, 2, 0.75);
+  const menu3 = _lineEl(x + 24, y + 172, x + 160, y + 172, palette.sidebar.text, 2, 0.75);
+  const menu4 = _lineEl(x + 24, y + 212, x + 132, y + 212, palette.sidebar.text, 2, 0.75);
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'rectangle',
     x, y, width: 200, height: 400,
     style: _baseStyle({ fill: palette.sidebar.fill, stroke: palette.sidebar.stroke, strokeWidth: 1 }),
-    text: _baseText({ value: 'Sidebar', color: palette.sidebar.text, fontSize: 14, verticalAlign: 'top' })
+    text: _baseText({ value: '', color: palette.sidebar.text })
   });
-  _pendingChildren.set(groupId, [bg]);
+  const header = _shapeEl({
+    id: headerId, shape: 'rectangle',
+    x, y, width: 200, height: 48,
+    style: _baseStyle({ fill: palette.sidebar.stroke, stroke: palette.sidebar.stroke, strokeWidth: 0, opacity: 0.25 })
+  });
+  const title = _shapeEl({
+    id: titleId, shape: 'text', type: 'text',
+    x: x + 16, y: y + 10, width: 168, height: 28,
+    style: _baseStyle({ fill: 'none', stroke: 'none', strokeWidth: 0 }),
+    text: _baseText({ value: 'Menu lateral', align: 'left', fontSize: 14, fontWeight: 600, color: palette.sidebar.text })
+  });
+  _pendingChildren.set(groupId, [bg, header, title, menu1, menu2, menu3, menu4]);
   return {
     id: groupId, type: 'group', name: 'Sidebar',
     x, y, width: 200, height: 400, rotation: 0,
-    children: [bgId], css: _componentCss('gf-sidebar'),
+    children: [bgId, headerId, titleId, menu1.id, menu2.id, menu3.id, menu4.id], css: _componentCss('gf-sidebar'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -266,6 +330,10 @@ function _createTable(x, y) {
   const palette = getComponentPalette();
   const bgId = _id();
   const headerId = _id();
+  const vertical1 = _lineEl(x + 132, y + 36, x + 132, y + 200, palette.table.stroke, 1, 0.8);
+  const vertical2 = _lineEl(x + 266, y + 36, x + 266, y + 200, palette.table.stroke, 1, 0.8);
+  const horizontal1 = _lineEl(x, y + 90, x + 400, y + 90, palette.table.stroke, 1, 0.8);
+  const horizontal2 = _lineEl(x, y + 144, x + 400, y + 144, palette.table.stroke, 1, 0.8);
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'rectangle',
@@ -278,11 +346,11 @@ function _createTable(x, y) {
     style: _baseStyle({ fill: palette.table.header, stroke: palette.table.stroke, strokeWidth: 1 }),
     text: _baseText({ value: 'Header', fontSize: 13, fontWeight: 600, align: 'left', verticalAlign: 'middle', color: palette.table.text })
   });
-  _pendingChildren.set(groupId, [bg, header]);
+  _pendingChildren.set(groupId, [bg, header, vertical1, vertical2, horizontal1, horizontal2]);
   return {
     id: groupId, type: 'group', name: 'Table',
     x, y, width: 400, height: 200, rotation: 0,
-    children: [bgId, headerId], css: _componentCss('gf-table'),
+    children: [bgId, headerId, vertical1.id, vertical2.id, horizontal1.id, horizontal2.id], css: _componentCss('gf-table'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -290,18 +358,37 @@ function _createTable(x, y) {
 function _createImage(x, y) {
   const palette = getComponentPalette();
   const bgId = _id();
+  const sunId = _id();
+  const mountainId = _id();
+  const labelId = _id();
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'rectangle',
     x, y, width: 200, height: 150,
     style: _baseStyle({ fill: palette.image.fill, stroke: palette.image.stroke, strokeWidth: 1, dashArray: '6 3' }),
-    text: _baseText({ value: 'Imagen', color: palette.image.text, fontSize: 14 })
+    text: _baseText({ value: '', color: palette.image.text, fontSize: 14 })
   });
-  _pendingChildren.set(groupId, [bg]);
+  const sun = _shapeEl({
+    id: sunId, shape: 'ellipse',
+    x: x + 148, y: y + 24, width: 24, height: 24,
+    style: _baseStyle({ fill: palette.image.stroke, stroke: palette.image.stroke, strokeWidth: 0, opacity: 0.75 })
+  });
+  const mountain = _shapeEl({
+    id: mountainId, shape: 'triangle',
+    x: x + 28, y: y + 44, width: 112, height: 76,
+    style: _baseStyle({ fill: palette.image.stroke, stroke: palette.image.stroke, strokeWidth: 1, opacity: 0.65 })
+  });
+  const label = _shapeEl({
+    id: labelId, shape: 'text', type: 'text',
+    x: x + 56, y: y + 112, width: 88, height: 24,
+    style: _baseStyle({ fill: 'none', stroke: 'none', strokeWidth: 0 }),
+    text: _baseText({ value: 'Imagen', fontSize: 14, color: palette.image.text })
+  });
+  _pendingChildren.set(groupId, [bg, sun, mountain, label]);
   return {
     id: groupId, type: 'group', name: 'Image',
     x, y, width: 200, height: 150, rotation: 0,
-    children: [bgId], css: _componentCss('gf-image'),
+    children: [bgId, sunId, mountainId, labelId], css: _componentCss('gf-image'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }
@@ -309,12 +396,21 @@ function _createImage(x, y) {
 function _createModal(x, y) {
   const palette = getComponentPalette();
   const bgId = _id();
+  const headerId = _id();
   const titleId = _id();
+  const closeId = _id();
+  const closeLine1 = _lineEl(x + 333, y + 14, x + 343, y + 24, palette.modal.text, 1.5, 0.8);
+  const closeLine2 = _lineEl(x + 343, y + 14, x + 333, y + 24, palette.modal.text, 1.5, 0.8);
   const groupId = 'group_' + crypto.randomUUID().slice(0, 12);
   const bg = _shapeEl({
     id: bgId, shape: 'rectangle',
     x, y, width: 360, height: 240,
     style: _baseStyle({ fill: palette.modal.fill, stroke: palette.modal.stroke, strokeWidth: 1 })
+  });
+  const header = _shapeEl({
+    id: headerId, shape: 'rectangle',
+    x, y, width: 360, height: 44,
+    style: _baseStyle({ fill: palette.modal.stroke, stroke: palette.modal.stroke, strokeWidth: 0, opacity: 0.25 })
   });
   const title = _shapeEl({
     id: titleId, shape: 'text', type: 'text',
@@ -322,11 +418,16 @@ function _createModal(x, y) {
     style: _baseStyle({ fill: 'none', stroke: 'none', strokeWidth: 0 }),
     text: _baseText({ value: 'Modal Title', align: 'left', fontSize: 16, fontWeight: 600, color: palette.modal.text })
   });
-  _pendingChildren.set(groupId, [bg, title]);
+  const close = _shapeEl({
+    id: closeId, shape: 'ellipse',
+    x: x + 326, y: y + 9, width: 24, height: 24,
+    style: _baseStyle({ fill: palette.modal.stroke, stroke: palette.modal.stroke, strokeWidth: 0, opacity: 0.4 })
+  });
+  _pendingChildren.set(groupId, [bg, header, title, close, closeLine1, closeLine2]);
   return {
     id: groupId, type: 'group', name: 'Modal',
     x, y, width: 360, height: 240, rotation: 0,
-    children: [bgId, titleId], css: _componentCss('gf-modal'),
+    children: [bgId, headerId, titleId, closeId, closeLine1.id, closeLine2.id], css: _componentCss('gf-modal'),
     locked: false, visible: true, zIndex: getNextZIndex()
   };
 }

@@ -1,0 +1,13 @@
+- ¿El ajuste de texto debe aplicarse también a los documentos exportados a HTML, SVG y PNG, o solo al lienzo del editor?
+- Cuando el alto de la figura no permita mostrar todas las líneas, ¿se debe truncar el texto con puntos suspensivos o aumentar automáticamente la altura de la figura?
+- ¿Las palabras sin espacios deben partirse por caracteres?
+  - Respuesta: La implementación actual las parte para evitar que desborden el polígono.
+- ¿Prefieres mantener la organización por responsabilidad (`core`, `model`, `editor`, `io` y `ui`) o agrupar en el futuro por funcionalidad completa, por ejemplo `diagramas` y `exportacion`?
+- ¿Está previsto añadir más procesos de Electron además de `electron-main.js` y `preload.js`?
+  - Respuesta: Por ahora se mantienen en la raíz porque son puntos de entrada del empaquetado.
+- ¿El índice de `codebase-memory` debe persistirse dentro del repositorio (`.codebase-memory/`) o mantenerse únicamente en la caché global del entorno?
+- ¿Debe incluirse algún contenido que ahora se excluye por diseño, como `logs/` o `node_modules/`, para consultas de diagnóstico o dependencias?
+- `SDD_specs/specs/demostracion.md` aparece como no utilizable para el parser del índice; ¿debe conservarse como Markdown, adaptarse a otro formato o dejarse fuera del grafo?
+- ¿El ancho ajustado debe formar parte del archivo de proyecto exportado o ser una preferencia independiente de cada instalación?
+- ¿Debe recordarse entre sesiones si cada colección quedó abierta o cerrada?
+- ¿La biblioteca UI del panel derecho y la colección "UI software" del lateral izquierdo deben seguir compartiendo exactamente los mismos componentes al añadir nuevos?
