@@ -137,7 +137,20 @@ export function renderGuideLines(guides) {
   const canvasH = vb.height || 1080;
   for (const guide of guides) {
     const line = document.createElementNS(SVG_NS, 'line');
-    if (guide.type === 'vertical') {
+    if (guide.type === 'dimension') {
+      for (const key of ['x1', 'y1', 'x2', 'y2']) line.setAttribute(key, guide[key]);
+      const zoom = getState().viewport.zoom || 1;
+      const text = document.createElementNS(SVG_NS, 'text');
+      const horizontal = guide.axis === 'width';
+      text.setAttribute('x', horizontal ? (guide.x1 + guide.x2) / 2 : guide.x2 + 5 / zoom);
+      text.setAttribute('y', horizontal ? guide.y2 + 12 / zoom : (guide.y1 + guide.y2) / 2);
+      text.setAttribute('text-anchor', horizontal ? 'middle' : 'start');
+      text.setAttribute('font-size', 11 / zoom);
+      text.setAttribute('fill', 'var(--color-primary)');
+      text.setAttribute('pointer-events', 'none');
+      text.textContent = guide.label;
+      _guideLayer.appendChild(text);
+    } else if (guide.type === 'vertical') {
       line.setAttribute('x1', guide.position);
       line.setAttribute('y1', 0);
       line.setAttribute('x2', guide.position);

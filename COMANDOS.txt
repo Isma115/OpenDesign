@@ -5,6 +5,8 @@ EJECUTAR (desarrollo):
 npm start
 
 CONSTRUIR INSTALADORES:
+npm run build:desktop
+# macOS y Windows juntos (ejecutar desde macOS)
 npm run build:win
 npm run build:mac
 npm run build:linux

@@ -186,6 +186,25 @@
   margin-bottom: 10px;
 }
 
+#prop-border-settings {
+  border: 1px solid var(--color-border);
+  padding: 10px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+
+#prop-border-settings legend {
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+#prop-border-enabled {
+  vertical-align: middle;
+  margin-right: 4px;
+  accent-color: var(--color-primary);
+}
+
 .prop-group label {
   display: block;
   font-size: 12px;
@@ -228,6 +247,45 @@
   border-radius: 0;
   cursor: pointer;
   background: var(--color-control);
+}
+
+.prop-group .color-hex {
+  margin-top: 4px;
+  padding: 5px 4px;
+  font-family: monospace;
+  text-align: center;
+  min-width: 0;
+}
+
+.prop-group .color-hex:invalid {
+  border-color: #ef4444;
+}
+
+.recent-colors {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.recent-colors summary { cursor: pointer; }
+.recent-colors-palette {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding-top: 6px;
+}
+
+.recent-color {
+  height: 22px;
+  border: 1px solid var(--color-border);
+}
+
+.recent-colors-palette:not(:has(button)) { display: block; }
+
+.recent-color:hover,
+.recent-color:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
 }
 
 .prop-group input[type="range"] {
@@ -338,6 +396,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.layer-name-input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 1px solid var(--color-primary);
+  background: var(--color-control);
+  font: inherit;
 }
 
 .layer-visibility {

@@ -62,7 +62,7 @@ const DEFAULT_TEXT = {
 
 function _baseElement(overrides) {
   const palette = getPalette().default;
-  return {
+  const element = {
     id: 'el_' + crypto.randomUUID().slice(0, 12),
     type: 'shape',
     shape: 'rectangle',
@@ -79,6 +79,10 @@ function _baseElement(overrides) {
     connectionPoints: DEFAULT_CONNECTION_POINTS.map(p => ({ ...p })),
     ...overrides
   };
+  if (element.shape !== 'line' && element.shape !== 'arrow') {
+    element.style = { ...element.style, strokeWidth: 0, borderWidth: 1 };
+  }
+  return element;
 }
 
 export function createRectangle(x, y, width, height) {

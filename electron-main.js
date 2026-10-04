@@ -1,5 +1,5 @@
 // #region Proceso principal Electron | Backend | ventana principal, menu y handlers IPC
-const { app, BrowserWindow, Menu, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -21,6 +21,7 @@ if (!fs.existsSync(profilePath)) {
 let mainWindow;
 let exitConfirmed = false;
 let exitPending = false;
+const selectedFilePaths = new Set();
 
 function requestExit() {
   if (exitPending) return;
@@ -43,7 +44,9 @@ ipcMain.on('exit-response', (event, confirmed) => {
     return;
   }
   exitConfirmed = true;
-  app.quit();
+  // El renderer ya ha guardado: no volver a depender del cierre nativo de la ventana.
+  mainWindow.webContents.session.flushStorageData();
+  app.exit(0);
 });
 
 function createWindow() {
@@ -97,8 +100,12 @@ function createWindow() {
           click: sendAction('new')
         },
         {
-          label: 'Abrir JSON...',
+          label: 'Cargar diseño...',
           accelerator: 'CmdOrCtrl+O',
+          click: sendAction('open')
+        },
+        {
+          label: 'Importar JSON...',
           click: sendAction('open')
         },
         {
@@ -112,8 +119,31 @@ function createWindow() {
           click: sendAction('save')
         },
         {
-          label: 'Descargar JSON',
+          label: 'Guardar como...',
+          accelerator: 'CmdOrCtrl+Shift+S',
+          click: sendAction('save-as')
+        },
+        {
+          label: 'Exportar JSON...',
           click: sendAction('download-json')
+        },
+        {
+          id: 'prompt-json',
+          label: 'Prompt JSON',
+          visible: false,
+          click: sendAction('prompt-json')
+        },
+        {
+          id: 'import-clipboard-json',
+          label: 'Importar JSON del portapapeles',
+          visible: false,
+          click: sendAction('import-clipboard-json')
+        },
+        {
+          id: 'image-json',
+          label: 'Imagen a JSON',
+          visible: false,
+          click: sendAction('image-json')
         },
         ...(process.platform !== 'darwin' ? [
           { type: 'separator' },
@@ -147,6 +177,20 @@ function createWindow() {
     {
       label: 'Ver',
       submenu: [
+        {
+          label: 'Funciones extra',
+          type: 'checkbox',
+          checked: false,
+          click: item => {
+            const view = template.find(entry => entry.label === 'Ver');
+            view.submenu.find(entry => entry.label === 'Funciones extra').checked = item.checked;
+            const file = template.find(entry => entry.label === 'Archivo');
+            file.submenu.filter(entry => ['prompt-json', 'import-clipboard-json', 'image-json'].includes(entry.id))
+              .forEach(entry => { entry.visible = item.checked; });
+            Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+          }
+        },
+        { type: 'separator' },
         { label: 'Cuadrícula', click: sendAction('toggle-grid') },
         { label: 'Ajustar a cuadrícula', click: sendAction('toggle-snap') },
         { label: 'Guías', click: sendAction('toggle-guides') },
@@ -179,44 +223,73 @@ function createWindow() {
   });
 }
 
-// Handlers para diálogos de archivo
-ipcMain.handle('dialog-open-file', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    filters: [
-      { name: 'Trazuvia Files', extensions: ['json', 'trazuvia.json'] },
-      { name: 'All Files', extensions: ['*'] }
-    ],
-    properties: ['openFile']
+ipcMain.handle('layer-context-menu', event => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) return null;
+  return new Promise(resolve => {
+    const menu = Menu.buildFromTemplate([
+      { label: 'Renombrar', click: () => resolve('rename') },
+      { label: 'Eliminar', click: () => resolve('delete') }
+    ]);
+    menu.popup({ window: mainWindow, callback: () => resolve(null) });
   });
+});
 
-  if (result.canceled || result.filePaths.length === 0) {
+ipcMain.on('edit-prompt-text', (event, action) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) return;
+  const commands = { copy: 'copy', paste: 'paste', cut: 'cut', 'select-all': 'selectAll', undo: 'undo', redo: 'redo' };
+  if (Object.hasOwn(commands, action)) mainWindow.webContents[commands[action]]();
+});
+
+ipcMain.handle('clipboard-read-text', event => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) return { success: false };
+  return { success: true, text: clipboard.readText() };
+});
+
+ipcMain.handle('clipboard-write-text', (event, text) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents || typeof text !== 'string') {
     return { success: false };
   }
+  clipboard.writeText(text);
+  return { success: true };
+});
 
+// Handlers para diálogos de archivo
+ipcMain.handle('dialog-open-file', async (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) return { success: false };
   try {
-    const content = fs.readFileSync(result.filePaths[0], 'utf-8');
-    return { success: true, content };
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Cargar diseño de Trazuvia',
+      filters: [{ name: 'Diseños Trazuvia (JSON)', extensions: ['json'] }],
+      properties: ['openFile']
+    });
+    if (result.canceled || result.filePaths.length === 0) return { success: false, canceled: true };
+    const filePath = result.filePaths[0];
+    const content = fs.readFileSync(filePath, 'utf-8');
+    selectedFilePaths.add(filePath);
+    return { success: true, content, filePath };
   } catch (err) {
     return { success: false, error: err.message };
   }
 });
 
-ipcMain.handle('dialog-save-file', async (event, content) => {
-  const result = await dialog.showSaveDialog(mainWindow, {
-    filters: [
-      { name: 'Trazuvia Files', extensions: ['json'] },
-      { name: 'All Files', extensions: ['*'] }
-    ],
-    defaultPath: 'design.trazuvia.json'
-  });
-
-  if (result.canceled) {
-    return { success: false };
-  }
-
+ipcMain.handle('dialog-save-file', async (event, content, options = {}) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents || typeof content !== 'string' ||
+    !options || typeof options !== 'object') return { success: false, error: 'Solicitud de guardado inválida' };
   try {
-    fs.writeFileSync(result.filePath, content, 'utf-8');
-    return { success: true, filePath: result.filePath };
+    let filePath = selectedFilePaths.has(options.filePath) ? options.filePath : null;
+    if (options.saveAs || !filePath) {
+      const name = path.basename(String(options.suggestedName || 'design.trazuvia.json'));
+      const result = await dialog.showSaveDialog(mainWindow, {
+        title: 'Guardar diseño de Trazuvia',
+        filters: [{ name: 'Diseños Trazuvia (JSON)', extensions: ['json'] }],
+        defaultPath: filePath || path.join(app.getPath('documents'), name)
+      });
+      if (result.canceled || !result.filePath) return { success: false, canceled: true };
+      filePath = result.filePath;
+    }
+    fs.writeFileSync(filePath, content, 'utf-8');
+    selectedFilePaths.add(filePath);
+    return { success: true, filePath };
   } catch (err) {
     return { success: false, error: err.message };
   }
@@ -225,7 +298,7 @@ ipcMain.handle('dialog-save-file', async (event, content) => {
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  if (!exitConfirmed && process.platform !== 'darwin') {
     app.quit();
   }
 });

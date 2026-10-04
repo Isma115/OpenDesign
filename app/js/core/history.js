@@ -25,8 +25,10 @@ export function undo() {
 
   const action = state.history.past.pop();
   const currentSnapshot = snapshotElements();
+  const currentCollections = action.beforeCollections ? JSON.parse(JSON.stringify(state.document.layerCollections || [])) : null;
   if (action.type === 'snapshot') {
     state.document.elements = JSON.parse(JSON.stringify(action.before));
+    if (action.beforeCollections) state.document.layerCollections = JSON.parse(JSON.stringify(action.beforeCollections));
   } else if (action.type === 'addElement') {
     const idx = state.document.elements.findIndex(e => e.id === action.element.id);
     if (idx !== -1) state.document.elements.splice(idx, 1);
@@ -47,7 +49,8 @@ export function undo() {
   state.history.future.push({
     type: 'snapshot',
     before: snapshotElements(),
-    after: currentSnapshot
+    after: currentSnapshot,
+    ...(currentCollections ? { beforeCollections: JSON.parse(JSON.stringify(state.document.layerCollections || [])), afterCollections: currentCollections } : {})
   });
 
   state.document.metadata.updatedAt = new Date().toISOString();
@@ -65,11 +68,14 @@ export function redo() {
   state.history.past.push({
     type: 'snapshot',
     before: currentSnapshot,
-    after: action.after ? JSON.parse(JSON.stringify(action.after)) : currentSnapshot
+    after: action.after ? JSON.parse(JSON.stringify(action.after)) : currentSnapshot,
+    ...(action.afterCollections ? { beforeCollections: JSON.parse(JSON.stringify(state.document.layerCollections || [])),
+      afterCollections: JSON.parse(JSON.stringify(action.afterCollections)) } : {})
   });
 
   if (action.type === 'snapshot') {
     state.document.elements = JSON.parse(JSON.stringify(action.after));
+    if (action.afterCollections) state.document.layerCollections = JSON.parse(JSON.stringify(action.afterCollections));
   } else if (action.type === 'addElement') {
     state.document.elements.push(JSON.parse(JSON.stringify(action.element)));
   } else if (action.type === 'removeElement') {

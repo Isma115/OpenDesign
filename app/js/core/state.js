@@ -27,6 +27,7 @@ const _state = {
     }
   },
   selectedElementIds: [],
+  filePath: null,
   activeTool: 'select',
   clipboard: [],
   history: {
@@ -247,6 +248,7 @@ function _notify() {
 export function loadDocument(docModel) {
   ensureDocumentStyles(docModel);
   _state.document = docModel;
+  _state.filePath = null;
   _state.selectedElementIds = [];
   _state.history = { past: [], future: [] };
   _state.dirty = false;
@@ -254,6 +256,7 @@ export function loadDocument(docModel) {
 }
 
 export function resetDocument() {
+  _state.filePath = null;
   _state.document = {
     id: 'doc_' + crypto.randomUUID().slice(0, 8),
     name: 'Nuevo diseno',

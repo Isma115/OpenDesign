@@ -2,6 +2,7 @@
 import { getState, loadDocument, setDirty, updateDocument } from '../core/state.js';
 import { renderDocument } from '../editor/renderer.js';
 import { refreshSelection } from '../editor/selection.js';
+import { buildJSONPrompt, buildImageJSONPrompt } from './json-prompt.js';
 
 const STORAGE_KEY = 'trazuvia_autosave';
 
@@ -10,7 +11,6 @@ export function saveToLocal() {
   try {
     const json = JSON.stringify(state.document);
     localStorage.setItem(STORAGE_KEY, json);
-    setDirty(false);
     return true;
   } catch (e) {
     console.error('Error saving to localStorage:', e);
@@ -37,18 +37,48 @@ export function loadFromLocal() {
   }
 }
 
-export function downloadJSON() {
+export async function saveDocument(saveAs = false) {
+  if (!window.electronAPI) return downloadJSON();
+  const state = getState();
+  const doc = state.document;
+  const json = JSON.stringify(doc, null, 2);
+  try {
+    const result = await window.electronAPI.saveFile(json, {
+      filePath: state.filePath, saveAs,
+      suggestedName: `${(doc.name || 'design').replace(/[\\/<>:"|?*]/g, '-')}.trazuvia.json`
+    });
+    if (!result.success) {
+      if (result.error) alert('No se pudo guardar el diseño: ' + result.error);
+      return false;
+    }
+    if (getState().document === doc) {
+      state.filePath = result.filePath;
+      if (JSON.stringify(doc, null, 2) === json) setDirty(false);
+      const status = document.getElementById('status-info');
+      if (status) status.textContent = `Guardado en ${result.filePath}`;
+    }
+    return true;
+  } catch (error) {
+    alert('No se pudo guardar el diseño: ' + error.message);
+    return false;
+  }
+}
+
+export async function downloadJSON() {
   const state = getState();
   const json = JSON.stringify(state.document, null, 2);
   
   // Si estamos en Electron, usar diálogo nativo
   if (window.electronAPI) {
-    window.electronAPI.saveFile(json).then(result => {
-      if (result.success) {
-        setDirty(false);
-      }
-    });
-    return;
+    try {
+      const result = await window.electronAPI.saveFile(json, { saveAs: true,
+        suggestedName: `${(state.document.name || 'design').replace(/[\\/<>:"|?*]/g, '-')}.trazuvia.json` });
+      if (result.error) alert('No se pudo exportar el JSON: ' + result.error);
+      return result.success;
+    } catch (error) {
+      alert('No se pudo exportar el JSON: ' + error.message);
+      return false;
+    }
   }
   
   // Fallback para navegador
@@ -62,17 +92,63 @@ export function downloadJSON() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  return true;
 }
 
-export function openJSON() {
+export async function copyJSONPrompt(specifications, fromImage = false) {
+  try {
+    const prompt = fromImage ? buildImageJSONPrompt(specifications) : buildJSONPrompt(getState().document, specifications);
+    if (window.electronAPI) {
+      const result = await window.electronAPI.writeClipboardText(prompt);
+      if (!result.success) throw new Error('No se pudo acceder al portapapeles');
+    } else {
+      await navigator.clipboard.writeText(prompt);
+    }
+    const status = document.getElementById('status-info');
+    if (status) status.textContent = fromImage ? 'Prompt copiado: pégalo en tu IA junto con la imagen' : 'Prompt JSON copiado al portapapeles';
+    return true;
+  } catch (error) {
+    console.error('No se pudo copiar el Prompt JSON:', error);
+    return false;
+  }
+}
+
+export async function importClipboardJSON() {
+  try {
+    let text;
+    if (window.electronAPI) {
+      const result = await window.electronAPI.readClipboardText();
+      if (!result.success) throw new Error('No se pudo acceder al portapapeles');
+      text = result.text;
+    } else {
+      text = await navigator.clipboard.readText();
+    }
+    const content = text.trim().replace(/^```(?:json)?\s*\n([\s\S]*?)\n```$/i, '$1');
+    if (!content) {
+      alert('El portapapeles está vacío. Copia primero el JSON del diseño.');
+      return false;
+    }
+    return handleFileContent(content, null, true);
+  } catch (error) {
+    alert('No se pudo importar el JSON del portapapeles: ' + error.message);
+    return false;
+  }
+}
+
+export async function openJSON() {
   // Si estamos en Electron, usar diálogo nativo
   if (window.electronAPI) {
-    window.electronAPI.openFile().then(result => {
+    try {
+      const result = await window.electronAPI.openFile();
       if (result.success && result.content) {
-        handleFileContent(result.content);
+        return handleFileContent(result.content, result.filePath);
       }
-    });
-    return;
+      if (result.error) alert('No se pudo cargar el diseño: ' + result.error);
+      return false;
+    } catch (error) {
+      alert('No se pudo cargar el diseño: ' + error.message);
+      return false;
+    }
   }
   
   // Fallback para navegador
@@ -89,19 +165,26 @@ export function handleFileImport(file) {
   reader.readAsText(file);
 }
 
-function handleFileContent(content) {
+function handleFileContent(content, filePath = null, fromClipboard = false) {
   try {
     const doc = JSON.parse(content);
     if (!_validateDocument(doc)) {
       alert('Archivo JSON invalido. Verifica que sea un archivo Trazuvia valido.');
       return;
     }
+    if (fromClipboard && getState().dirty && !confirm('Hay cambios sin guardar. ¿Reemplazar el diseño con el JSON del portapapeles?')) {
+      return false;
+    }
     loadDocument(doc);
+    getState().filePath = filePath;
     renderDocument(doc);
     refreshSelection();
-    setDirty(false);
+    setDirty(fromClipboard);
     const nameInput = document.getElementById('doc-name');
     if (nameInput) nameInput.value = doc.name || 'Sin nombre';
+    const status = document.getElementById('status-info');
+    if (status) status.textContent = filePath ? `Cargado desde ${filePath}` : 'Diseño importado';
+    return true;
   } catch (err) {
     alert('Error al leer el archivo: ' + err.message);
   }

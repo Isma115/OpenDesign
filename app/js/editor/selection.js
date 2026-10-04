@@ -34,7 +34,7 @@ export function handleCanvasClick(event) {
 }
 
 export function startSelectionBox(startPoint) {
-  const svg = document.getElementById('canvas');
+  cancelSelectionBox();
   const selectionLayer = document.getElementById('selection-layer');
   _selectionBox = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
   _selectionBox.classList.add('selection-box');
@@ -79,9 +79,13 @@ export function endSelectionBox(startPoint, currentPoint) {
   }
   setSelection(ids);
 
-  _selectionBox.remove();
-  _selectionBox = null;
+  cancelSelectionBox();
   _updateSelectionVisual();
+}
+
+export function cancelSelectionBox() {
+  _selectionBox?.remove();
+  _selectionBox = null;
 }
 
 export function hitTest(point) {

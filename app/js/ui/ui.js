@@ -3,7 +3,7 @@ import { getState, updateElement, updateElements, updateDocument, setSelection, 
 import { renderDocument, applyViewport } from '../editor/renderer.js';
 import { refreshSelection } from '../editor/selection.js';
 import { commitAction, snapshotElements } from '../core/history.js';
-import { downloadJSON, openJSON, handleFileImport, saveToLocal } from '../io/storage.js';
+import { downloadJSON, openJSON, importClipboardJSON, handleFileImport, saveDocument } from '../io/storage.js';
 import { exportAsHTML, exportAsSVG, exportAsPNG } from '../io/export.js';
 import { getShapeDisplayName, createGroup, createImage } from '../model/shapes.js';
 import { zoomBy, setZoom, updateToolUI } from '../editor/keyboard.js';
@@ -11,6 +11,9 @@ import { getElementBounds, getMultiSelectionBounds, screenToCanvas } from '../co
 import { updateConnectorPath, updateAllConnectorsForElement } from '../model/connectors.js';
 import { cancelActiveCanvasInteraction, placeComponent } from '../editor/tools.js';
 import { toggleTheme } from './theme.js';
+import { loadRecentColors, rememberColor } from './recent-colors.js';
+import { initJSONPromptDialog, openJSONPromptDialog } from './json-prompt-dialog.js';
+import { deleteSelectedElements } from '../editor/actions.js';
 import { createExampleDocument } from '../model/example.js';
 import { createLayerCollection, moveLayerToCollection } from '../model/layer-collections.js';
 import { loadDocument, setDirty } from '../core/state.js';
@@ -33,8 +36,10 @@ export function initUI() {
   _initRightPanelResize();
   _initLeftPanelResize();
   _initPropertyInputs();
+  _initColorInputs();
   _initTopbarActions();
   _initFileInput();
+  initJSONPromptDialog();
   _initComponentDrag();
   _initDocName();
   document.getElementById('btn-add-layer-collection')?.addEventListener('click', () => {
@@ -216,6 +221,95 @@ function _initPanelTabs() {
   });
 }
 
+function _initColorInputs() {
+  let recentColors = loadRecentColors();
+  const palettes = [];
+  const renderPalettes = () => {
+    for (const { palette, apply } of palettes) {
+      palette.replaceChildren();
+      if (!recentColors.length) {
+        palette.textContent = 'Aún no has usado ningún color.';
+        continue;
+      }
+      for (const value of recentColors) {
+        const swatch = document.createElement('button');
+        swatch.type = 'button';
+        swatch.className = 'recent-color';
+        swatch.style.backgroundColor = value;
+        swatch.title = value;
+        swatch.setAttribute('aria-label', `Usar color ${value}`);
+        swatch.addEventListener('click', () => apply(value));
+        palette.appendChild(swatch);
+      }
+    }
+  };
+  const remember = value => {
+    recentColors = rememberColor(value);
+    renderPalettes();
+  };
+  document.querySelectorAll('#panel-content input[type="color"]').forEach(color => {
+    const hex = document.createElement('input');
+    hex.type = 'text';
+    hex.id = `${color.id}-hex`;
+    hex.className = 'color-hex';
+    hex.value = color.value;
+    hex.spellcheck = false;
+    hex.setAttribute('aria-label', `Código hexadecimal: ${color.closest('.prop-group').querySelector('label').textContent.trim()}`);
+    hex.title = 'Selecciona el código para copiarlo; pega otro color para aplicarlo';
+    color.after(hex);
+    hex.addEventListener('focus', () => hex.select());
+    hex.addEventListener('input', () => hex.setCustomValidity(''));
+    const apply = value => {
+      let normalized = value.trim().replace(/^#/, '');
+      if (!/^(?:[\da-f]{3}|[\da-f]{6})$/i.test(normalized)) {
+        hex.setCustomValidity('Introduce un color hexadecimal, por ejemplo #3864c7');
+        hex.reportValidity();
+        return;
+      }
+      if (normalized.length === 3) normalized = [...normalized].map(char => char + char).join('');
+      normalized = `#${normalized.toLowerCase()}`;
+      hex.setCustomValidity('');
+      hex.value = normalized;
+      if (color.value === normalized) {
+        remember(normalized);
+        return;
+      }
+      color.value = normalized;
+      color.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    hex.addEventListener('change', () => apply(hex.value));
+    hex.addEventListener('paste', event => {
+      const value = event.clipboardData.getData('text').trim();
+      if (!/^#?(?:[\da-f]{3}|[\da-f]{6})$/i.test(value)) return;
+      event.preventDefault();
+      apply(value);
+    });
+    hex.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        apply(hex.value);
+      }
+    });
+    const sync = () => { hex.value = color.value; hex.setCustomValidity(''); };
+    color.addEventListener('input', sync);
+    color.addEventListener('change', sync);
+    color.addEventListener('change', () => remember(color.value));
+    const details = document.createElement('details');
+    details.className = 'recent-colors';
+    const summary = document.createElement('summary');
+    summary.textContent = 'Colores recientes';
+    const palette = document.createElement('div');
+    palette.className = 'recent-colors-palette';
+    palette.setAttribute('role', 'group');
+    palette.setAttribute('aria-label', 'Últimos 16 colores utilizados');
+    details.appendChild(summary);
+    details.appendChild(palette);
+    hex.after(details);
+    palettes.push({ palette, apply });
+  });
+  renderPalettes();
+}
+
 function _initPropertyInputs() {
   const bind = (id, handler, options = {}) => {
     const el = document.getElementById(id);
@@ -230,22 +324,7 @@ function _initPropertyInputs() {
   bind('prop-name', () => {
     const selected = getSelectedElements();
     if (selected.length !== 1) return;
-    const el = selected[0];
-    const name = document.getElementById('prop-name').value.trim();
-    if (name === (el.name || '')) return;
-    const before = snapshotElements();
-    const patch = { name };
-    if (el.type === 'group') {
-      patch.componentType = el.componentType || (el.name || '').toLowerCase();
-      const className = getCssClassForElement(el);
-      if (className) patch.css = { ...el.css, className };
-    }
-    updateElement(el.id, patch);
-    commitAction({ type: 'snapshot', before, after: snapshotElements() });
-    renderDocument(getState().document);
-    refreshSelection();
-    _updatePropertiesPanel();
-    _updateLayersPanel();
+    _renameLayer(selected[0].id, document.getElementById('prop-name').value.trim());
   });
 
   bind('prop-x', (commit) => _updatePropFromInput('x', parseFloat, commit), { live: true });
@@ -259,6 +338,7 @@ function _initPropertyInputs() {
     rotationInput.addEventListener('change', () => _updateRotationFromInput(true));
   }
   bind('prop-fill', (commit) => _updateStyleFromInput('fill', 'prop-fill', commit), { live: true });
+  bind('prop-border-enabled', _updateBorderEnabled);
   bind('prop-stroke', (commit) => _updateStyleFromInput('stroke', 'prop-stroke', commit), { live: true });
   bind('prop-stroke-width', (commit) => _updateStyleFromInput('strokeWidth', 'prop-stroke-width', commit), { live: true });
   bind('prop-opacity', (commit) => {
@@ -463,7 +543,8 @@ function _initComponentDrag() {
 function _initDocName() {
   const nameInput = document.getElementById('doc-name');
   if (nameInput) {
-    nameInput.addEventListener('change', () => {
+    nameInput.addEventListener('input', () => {
+      if (nameInput.value === getState().document.name) return;
       updateDocument(doc => { doc.name = nameInput.value; });
     });
   }
@@ -525,12 +606,13 @@ function _handleAction(action) {
       openJSON();
       break;
     case 'save':
-      if (!state.dirty) break;
-      if (!confirm('Guardar cambios?')) break;
-      saveToLocal();
-      _updateStatusSaved();
+      saveDocument();
       break;
+    case 'save-as': saveDocument(true); break;
     case 'download-json': downloadJSON(); break;
+    case 'prompt-json': openJSONPromptDialog(); break;
+    case 'image-json': openJSONPromptDialog(true); break;
+    case 'import-clipboard-json': importClipboardJSON(); break;
     case 'export-html': exportAsHTML(); break;
     case 'export-svg': exportAsSVG(); break;
     case 'export-png': exportAsPNG(); break;
@@ -576,6 +658,12 @@ function _handleAction(action) {
 }
 
 export function handleMenuAction(action) {
+  if (document.getElementById('prompt-json-dialog').open) {
+    if (['copy', 'paste', 'cut', 'select-all', 'undo', 'redo'].includes(action)) {
+      window.electronAPI.editPromptText(action);
+    }
+    return;
+  }
   _handleAction(action);
 }
 
@@ -608,25 +696,9 @@ function _handleDuplicate() {
 }
 
 function _handleDelete() {
-  const state = getState();
-  if (state.selectedElementIds.length === 0) return;
-  const before = snapshotElements();
-  const ids = [...state.selectedElementIds];
-  const idsToRemove = new Set(ids);
-  for (const element of state.document.elements) {
-    if (element.type !== 'connector') continue;
-    if (idsToRemove.has(element.source?.elementId) || idsToRemove.has(element.target?.elementId)) {
-      idsToRemove.add(element.id);
-    }
-  }
-  for (const id of idsToRemove) {
-    removeElement(id);
-  }
-  clearSelection();
-  const after = snapshotElements();
-  commitAction({ type: 'snapshot', before, after });
-  renderDocument(state.document);
-  refreshSelection();
+  deleteSelectedElements();
+  _updateLayersPanel();
+  _updatePropertiesPanel();
 }
 
 function _updatePropFromInput(prop, parser, commit = true) {
@@ -686,6 +758,25 @@ function _snapshotsEqual(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+function _updateBorderEnabled() {
+  const selected = getSelectedElements();
+  if (selected.length !== 1) return;
+  const el = selected[0];
+  const style = { ..._getGroupSurfaceStyle(el), ...el.style };
+  const enabled = document.getElementById('prop-border-enabled').checked;
+  const borderWidth = style.strokeWidth > 0 ? style.strokeWidth : (style.borderWidth || 1);
+  const strokeWidth = enabled ? borderWidth : 0;
+  const stroke = style.stroke && style.stroke !== 'none' ? style.stroke : '#111827';
+  _beginElementPropertyInput(el.id, 'style.border');
+  updateElement(el.id, { style: { ...style, borderWidth, strokeWidth, stroke } });
+  _updateGroupSurfaceStyle(el, 'stroke', stroke);
+  _updateGroupSurfaceStyle(el, 'strokeWidth', strokeWidth);
+  renderDocument(getState().document);
+  refreshSelection();
+  _commitElementPropertyInput(true);
+  _updatePropertiesPanel();
+}
+
 function _updateStyleFromInput(prop, inputId, commit = true) {
   const state = getState();
   if (state.selectedElementIds.length !== 1) return;
@@ -696,8 +787,9 @@ function _updateStyleFromInput(prop, inputId, commit = true) {
   const val = typeof input.value === 'string' && input.type !== 'range' && input.type !== 'number'
     ? input.value
     : parseFloat(input.value);
+  if (prop === 'strokeWidth' && (!Number.isFinite(val) || val < 1 || val > 20)) return;
   _beginElementPropertyInput(el.id, `style.${prop}`);
-  updateElement(el.id, { style: { ...el.style, [prop]: val } });
+  updateElement(el.id, { style: { ..._getGroupSurfaceStyle(el), ...el.style, [prop]: val } });
   _updateGroupSurfaceStyle(el, prop, val);
   renderDocument(state.document);
   refreshSelection();
@@ -815,11 +907,16 @@ function _fillShapeProps(el) {
   _setVal('prop-rotation', el.rotation ?? 0);
   const rotLabel = document.getElementById('prop-rotation-val');
   if (rotLabel) rotLabel.innerHTML = (el.rotation ?? 0) + '&deg;';
-  const visualStyle = el.style || _getGroupSurfaceStyle(el);
+  const visualStyle = { ..._getGroupSurfaceStyle(el), ...el.style };
   if (visualStyle) {
     _setVal('prop-fill', visualStyle.fill || '#ffffff');
     _setVal('prop-stroke', visualStyle.stroke || '#111827');
-    _setVal('prop-stroke-width', visualStyle.strokeWidth ?? 2);
+    const borderEnabled = visualStyle.stroke !== 'none' && (visualStyle.strokeWidth ?? 2) > 0;
+    document.getElementById('prop-border-enabled').checked = borderEnabled;
+    const borderSettings = document.getElementById('prop-border-settings');
+    borderSettings.hidden = !borderEnabled;
+    borderSettings.disabled = !borderEnabled;
+    _setVal('prop-stroke-width', borderEnabled ? (visualStyle.strokeWidth ?? 2) : (visualStyle.borderWidth || 1));
     const opacity = visualStyle.opacity ?? 1;
     _setVal('prop-opacity', opacity);
     const opLabel = document.getElementById('prop-opacity-val');
@@ -890,9 +987,13 @@ function _setVal(id, val) {
   const el = document.getElementById(id);
   if (!el) return;
   const nextValue = String(val ?? '');
-  if (el.value === nextValue) return;
   if (document.activeElement === el) return;
   el.value = nextValue;
+  const hex = document.getElementById(`${id}-hex`);
+  if (el.type === 'color' && hex && document.activeElement !== hex) {
+    hex.value = el.value;
+    hex.setCustomValidity('');
+  }
 }
 
 function _updateSpecificCssNameFromInput(commit) {
@@ -1034,6 +1135,56 @@ function _getLayerIconSvg(element) {
   return icons[element.shape] || icons.rectangle;
 }
 
+function _renameLayer(id, name) {
+  const el = getElementById(id);
+  if (!el || name === (el.name || '')) return;
+  const before = snapshotElements();
+  const patch = { name };
+  if (el.type === 'group') {
+    patch.componentType = el.componentType || (el.name || '').toLowerCase();
+    const className = getCssClassForElement(el);
+    if (className) patch.css = { ...el.css, className };
+  }
+  updateElement(id, patch);
+  commitAction({ type: 'snapshot', before, after: snapshotElements() });
+  renderDocument(getState().document);
+  refreshSelection();
+  _updateLayersPanel();
+  _updatePropertiesPanel();
+}
+
+function _startLayerRename(id) {
+  const item = [...document.querySelectorAll('.layer-item')].find(row => row.dataset.layerId === id);
+  if (!item) return;
+  const label = item.querySelector('.layer-name');
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'layer-name-input';
+  input.setAttribute('aria-label', 'Renombrar capa');
+  input.value = getElementById(id)?.name || label.textContent;
+  item.draggable = false;
+  label.replaceWith(input);
+  let finished = false;
+  const finish = save => {
+    if (finished) return;
+    finished = true;
+    if (save && input.value.trim()) _renameLayer(id, input.value.trim());
+    _updateLayersPanel();
+  };
+  input.addEventListener('click', event => event.stopPropagation());
+  input.addEventListener('contextmenu', event => event.stopPropagation());
+  input.addEventListener('blur', () => finish(true));
+  input.addEventListener('keydown', event => {
+    event.stopPropagation();
+    if (event.key === 'Enter' || event.key === 'Escape') {
+      event.preventDefault();
+      finish(event.key === 'Enter');
+    }
+  });
+  input.focus();
+  input.select();
+}
+
 function _updateLayersPanel() {
   const state = getState();
   const list = document.getElementById('layers-list');
@@ -1096,7 +1247,25 @@ function _updateLayersPanel() {
   for (const el of sorted) {
     const item = document.createElement('div');
     item.className = 'layer-item';
+    item.dataset.layerId = el.id;
     item.draggable = true;
+    item.addEventListener('contextmenu', async event => {
+      if (!window.electronAPI?.showLayerContextMenu) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const doc = state.document;
+      setSelection([el.id]);
+      refreshSelection();
+      _updatePropertiesPanel();
+      _updateLayersPanel();
+      const action = await window.electronAPI.showLayerContextMenu();
+      if (getState().document !== doc || !getElementById(el.id)) return;
+      if (action === 'rename') _startLayerRename(el.id);
+      if (action === 'delete') {
+        setSelection([el.id]);
+        _handleDelete();
+      }
+    });
     item.addEventListener('dragstart', e => {
       e.dataTransfer.setData('application/x-trazuvia-layer', el.id);
       e.dataTransfer.effectAllowed = 'move';

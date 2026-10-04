@@ -6,16 +6,18 @@ const { EventEmitter } = require('node:events');
 
 const app = new EventEmitter();
 Object.assign(app, { setName() {}, getPath: () => '/unused', whenReady: () => Promise.resolve(), quit: () => app.emit('before-quit', event()) });
+app.exit = code => { assert.equal(code, 0); windows[0].destroy(); };
 const ipcMain = new EventEmitter();
 ipcMain.handle = () => {};
 const windows = [];
 function event() { return { prevented: false, preventDefault() { this.prevented = true; } }; }
 class BrowserWindow extends EventEmitter {
-  constructor() { super(); windows.push(this); this.sent = []; this.webContents = { send: message => this.sent.push(message) }; }
+  constructor() { super(); windows.push(this); this.sent = []; this.webContents = { send: message => this.sent.push(message), session: { flushStorageData() {} } }; }
   show() {}
   focus() {}
   loadFile() {}
   close() { const e = event(); this.emit('close', e); if (!e.prevented) this.emit('closed'); }
+  destroy() { this.emit('closed'); }
 }
 const electron = { app, BrowserWindow, ipcMain, Menu: { buildFromTemplate: x => x, setApplicationMenu() {} }, dialog: {} };
 vm.runInNewContext(fs.readFileSync('electron-main.js', 'utf8'), {
@@ -52,6 +54,8 @@ vm.runInNewContext(fs.readFileSync('electron-main.js', 'utf8'), {
   for (const platform of ['darwin', 'linux', 'win32']) {
     const desktopApp = new EventEmitter();
     let quitCalls = 0;
+    let exitCalls = 0;
+    let storageFlushed = false;
     let terminated = false;
     let desktopWindow;
     Object.assign(desktopApp, {
@@ -62,14 +66,29 @@ vm.runInNewContext(fs.readFileSync('electron-main.js', 'utf8'), {
         const beforeQuit = event();
         desktopApp.emit('before-quit', beforeQuit);
         if (beforeQuit.prevented) return;
-        desktopWindow.close();
-        terminated = desktopWindow.destroyed;
+        // Reproduce el fallo: el cierre normal queda bloqueado con la ventana negra.
+        desktopWindow.black = true;
+      },
+      exit(code) {
+        assert.equal(code, 0);
+        assert.equal(storageFlushed, true, 'Volcar el almacenamiento antes de terminar');
+        exitCalls++;
+        desktopWindow.destroy();
+        terminated = true;
       }
     });
     const desktopIpc = new EventEmitter();
     desktopIpc.handle = () => {};
     class DesktopWindow extends BrowserWindow {
-      constructor() { super(); desktopWindow = this; this.destroyed = false; }
+      constructor() {
+        super(); desktopWindow = this; this.destroyed = false;
+        this.webContents.session.flushStorageData = () => { storageFlushed = true; };
+      }
+      destroy() {
+        this.destroyed = true;
+        this.emit('closed');
+        desktopApp.emit('window-all-closed');
+      }
       close() {
         const closing = event();
         this.emit('close', closing);
@@ -80,11 +99,6 @@ vm.runInNewContext(fs.readFileSync('electron-main.js', 'utf8'), {
         }
       }
     }
-    // El evento window-all-closed puede llamar de nuevo a quit en Linux/Windows.
-    desktopApp.quit = (() => {
-      const quit = desktopApp.quit.bind(desktopApp);
-      return () => { if (!desktopWindow.destroyed) quit(); };
-    })();
     vm.runInNewContext(fs.readFileSync('electron-main.js', 'utf8'), {
       require: name => name === 'electron'
         ? { ...electron, app: desktopApp, ipcMain: desktopIpc, BrowserWindow: DesktopWindow }
@@ -96,9 +110,13 @@ vm.runInNewContext(fs.readFileSync('electron-main.js', 'utf8'), {
     assert.equal(desktopWindow.destroyed, false);
     desktopIpc.emit('exit-response', { sender: desktopWindow.webContents }, false);
     assert.equal(quitCalls, 0);
+    assert.equal(exitCalls, 0);
+    assert.equal(storageFlushed, false);
     desktopWindow.close();
     desktopIpc.emit('exit-response', { sender: desktopWindow.webContents }, true);
-    assert.equal(quitCalls, 1, platform + ': confirmar debe llamar a app.quit');
+    assert.equal(quitCalls, 0, platform + ': no repetir el cierre normal bloqueado');
+    assert.equal(exitCalls, 1, platform + ': confirmar termina el proceso');
+    assert.equal(desktopWindow.black, undefined);
     assert.equal(terminated, true, platform + ': el proceso debe terminar');
     assert.deepEqual(desktopWindow.sent, ['confirm-exit', 'confirm-exit']);
   }
@@ -137,5 +155,5 @@ vm.runInNewContext(fs.readFileSync('electron-main.js', 'utf8'), {
   dialog.returnValue = 'exit';
   listeners.close();
   assert.equal(response, true);
-  console.log('Confirmación de salida: cierre, cancelación, Salir y error de guardado verificados');
+  console.log('Salida: cancelación, error de guardado, volcado del almacenamiento y cierre normal bloqueado verificados');
 })().catch(error => { console.error(error); process.exitCode = 1; });

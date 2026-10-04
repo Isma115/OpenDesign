@@ -12,7 +12,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Diálogos de archivo
   openFile: () => ipcRenderer.invoke('dialog-open-file'),
-  saveFile: (content) => ipcRenderer.invoke('dialog-save-file', content),
+  saveFile: (content, options = {}) => ipcRenderer.invoke('dialog-save-file', content, options),
+  writeClipboardText: (text) => ipcRenderer.invoke('clipboard-write-text', text),
+  readClipboardText: () => ipcRenderer.invoke('clipboard-read-text'),
+  editPromptText: (action) => ipcRenderer.send('edit-prompt-text', action),
+  showLayerContextMenu: () => ipcRenderer.invoke('layer-context-menu'),
   
   // Información de la aplicación
   getAppVersion: () => '1.0.0',

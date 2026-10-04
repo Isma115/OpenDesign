@@ -9,6 +9,8 @@ import { getMultiSelectionBounds } from '../core/geometry.js';
 import { copySelectedElements, pasteClipboardElements } from '../io/clipboard.js';
 import { updateAllConnectorsForElements } from '../model/connectors.js';
 import { cancelActiveCanvasInteraction } from './tools.js';
+import { saveDocument } from '../io/storage.js';
+import { deleteSelectedElements } from './actions.js';
 
 export function initKeyboard() {
   document.addEventListener('keydown', _onKeyDown);
@@ -64,7 +66,7 @@ function _onKeyDown(e) {
         return;
       case 's':
         e.preventDefault();
-        import('./storage.js').then(m => m.saveToLocal());
+        saveDocument(e.shiftKey);
         return;
     }
   }
@@ -173,24 +175,7 @@ function _duplicate() {
 }
 
 function _deleteSelected() {
-  const state = getState();
-  if (state.selectedElementIds.length === 0) return;
-  const before = snapshotElements();
-  const ids = [...state.selectedElementIds];
-  for (const id of ids) {
-    removeElement(id);
-    const relatedConns = state.document.elements.filter(
-      e => e.type === 'connector' && (e.source?.elementId === id || e.target?.elementId === id)
-    );
-    for (const conn of relatedConns) {
-      removeElement(conn.id);
-    }
-  }
-  clearSelection();
-  const after = snapshotElements();
-  commitAction({ type: 'snapshot', before, after });
-  renderDocument(state.document);
-  refreshSelection();
+  deleteSelectedElements();
 }
 
 function _selectAll() {

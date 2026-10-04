@@ -59,6 +59,11 @@ export function createComponentGroup(compType, x, y) {
   const factory = factories[compType];
   const group = factory(x, y);
   group.componentType = compType;
+  const surfaces = (_pendingChildren.get(group.id) || []).filter(child =>
+    child.type !== 'text' && child.style.fill !== 'none'
+  );
+  for (const surface of surfaces) surface.style.strokeWidth = 0;
+  group.style = { ...surfaces[0]?.style, strokeWidth: 0, borderWidth: 1 };
   return group;
 }
 

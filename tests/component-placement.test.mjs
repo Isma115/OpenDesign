@@ -61,7 +61,7 @@ const renderer = {
     'applyViewport', 'renderGuideLines', 'clearGuides'].map(name => [name, noOp]))
 };
 const selection = {
-  ...Object.fromEntries(['handleSelectionClick', 'handleCanvasClick', 'updateSelectionBox', 'endSelectionBox',
+  ...Object.fromEntries(['handleSelectionClick', 'handleCanvasClick', 'startSelectionBox', 'cancelSelectionBox', 'updateSelectionBox', 'endSelectionBox',
     'refreshSelection'].map(name => [name, noOp])),
   hitTest: () => null, hitTestHandle: () => null, hitTestConnectionPoint: () => null
 };

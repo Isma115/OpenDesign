@@ -25,6 +25,12 @@ Esto abrirá la aplicación de escritorio con Electron.
 
 ### Construir Instalador
 
+Para generar macOS (DMG) y Windows (EXE portable) con un solo comando,
+ejecútalo desde macOS:
+```bash
+npm run build:desktop
+```
+
 Para Windows:
 ```bash
 npm run build:win

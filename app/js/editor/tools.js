@@ -4,8 +4,8 @@ import { screenToCanvas, getElementBounds } from '../core/geometry.js';
 import { createShapeByTool } from '../model/shapes.js';
 import { createComponentGroup, getPendingChildren } from '../model/components.js';
 import { renderDocument, renderElement, updateElementNode, clearPreview, renderPreview, applyViewport, getSvgCanvas, renderGuideLines, clearGuides, SVG_NS } from './renderer.js';
-import { handleSelectionClick, handleCanvasClick, hitTest, hitTestHandle, hitTestConnectionPoint, updateSelectionBox, endSelectionBox, refreshSelection } from './selection.js';
-import { snapElement, snapPoint } from '../core/snapping.js';
+import { handleSelectionClick, handleCanvasClick, hitTest, hitTestHandle, hitTestConnectionPoint, startSelectionBox, updateSelectionBox, endSelectionBox, cancelSelectionBox, refreshSelection } from './selection.js';
+import { snapElement, snapPoint, snapResize } from '../core/snapping.js';
 import { commitAction, snapshotElements } from '../core/history.js';
 import {
   createConnectorElement,
@@ -252,7 +252,10 @@ function _handleSelectDown(e, point) {
     _startDrag(point);
   } else {
     handleCanvasClick(e);
-    _startPan(e);
+    state.interaction.isDrawing = true;
+    state.interaction._isSelectionBox = true;
+    state.interaction.dragStart = point;
+    startSelectionBox(point);
   }
 }
 
@@ -367,7 +370,11 @@ function _doResize(point) {
     }
   }
 
-  const patch = { x: newX, y: newY, width: newW, height: newH };
+  if (handle.includes('w')) newX = _dragData.startX + _dragData.startWidth - newW;
+  if (handle.includes('n')) newY = _dragData.startY + _dragData.startHeight - newH;
+  const bounds = { x: newX, y: newY, width: newW, height: newH };
+  const snapped = _shiftHeld ? { ...bounds, guides: [] } : snapResize(el, bounds, handle, minSize);
+  const patch = { x: snapped.x, y: snapped.y, width: snapped.width, height: snapped.height };
   if (_dragData.startLineData) {
     patch._lineData = _getResizedLineData(
       _dragData.startLineData,
@@ -375,10 +382,10 @@ function _doResize(point) {
       _dragData.startY,
       _dragData.startWidth,
       _dragData.startHeight,
-      newX,
-      newY,
-      newW,
-      newH
+      patch.x,
+      patch.y,
+      patch.width,
+      patch.height
     );
   }
   updateElement(el.id, patch);
@@ -386,6 +393,7 @@ function _doResize(point) {
 
   renderDocument(state.document);
   refreshSelection();
+  renderGuideLines(snapped.guides);
 }
 
 function _getTranslatedLineData(startLineData, dx, dy) {
@@ -411,6 +419,7 @@ function _getResizedLineData(startLineData, startX, startY, startWidth, startHei
 function _endResize(point) {
   const state = getState();
   state.interaction.isResizing = false;
+  clearGuides();
   _pointerDownPos = null;
   if (_dragData) {
     const after = snapshotElements();
@@ -947,6 +956,7 @@ function _hideRenderedTextForEdit(elementId) {
 
 function _cancelActiveInteraction() {
   const state = getState();
+  cancelSelectionBox();
   state.interaction.isDragging = false;
   state.interaction.isDrawing = false;
   state.interaction.isPanning = false;
