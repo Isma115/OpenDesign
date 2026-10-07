@@ -12,7 +12,6 @@ import { updateConnectorPath, updateAllConnectorsForElement } from '../model/con
 import { cancelActiveCanvasInteraction, placeComponent } from '../editor/tools.js';
 import { toggleTheme } from './theme.js';
 import { loadRecentColors, rememberColor } from './recent-colors.js';
-import { initJSONPromptDialog, openJSONPromptDialog } from './json-prompt-dialog.js';
 import { deleteSelectedElements } from '../editor/actions.js';
 import { createExampleDocument } from '../model/example.js';
 import { createLayerCollection, moveLayerToCollection } from '../model/layer-collections.js';
@@ -39,7 +38,6 @@ export function initUI() {
   _initColorInputs();
   _initTopbarActions();
   _initFileInput();
-  initJSONPromptDialog();
   _initComponentDrag();
   _initDocName();
   document.getElementById('btn-add-layer-collection')?.addEventListener('click', () => {
@@ -610,8 +608,6 @@ function _handleAction(action) {
       break;
     case 'save-as': saveDocument(true); break;
     case 'download-json': downloadJSON(); break;
-    case 'prompt-json': openJSONPromptDialog(); break;
-    case 'image-json': openJSONPromptDialog(true); break;
     case 'import-clipboard-json': importClipboardJSON(); break;
     case 'export-html': exportAsHTML(); break;
     case 'export-svg': exportAsSVG(); break;
@@ -658,12 +654,6 @@ function _handleAction(action) {
 }
 
 export function handleMenuAction(action) {
-  if (document.getElementById('prompt-json-dialog').open) {
-    if (['copy', 'paste', 'cut', 'select-all', 'undo', 'redo'].includes(action)) {
-      window.electronAPI.editPromptText(action);
-    }
-    return;
-  }
   _handleAction(action);
 }
 

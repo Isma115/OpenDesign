@@ -132,7 +132,7 @@ vm.runInNewContext(fs.readFileSync('electron-main.js', 'utf8'), {
   form.addEventListener = (name, callback) => { listeners[name] = callback; };
   const error = { hidden: true };
   let request, response, saved = true;
-  const source = fs.readFileSync('app/js/ui/exit-dialog.js', 'utf8').replace(/^import.*\n/, '').replace('export function', 'function');
+  const source = fs.readFileSync('app/js/ui/exit-dialog.js', 'utf8').replace(/\r\n/g, '\n').replace(/^import.*\n/, '').replace('export function', 'function');
   vm.runInNewContext(source + '\ninitExitDialog();', {
     document: { getElementById: id => id === 'exit-dialog' ? dialog : error },
     window: { electronAPI: { onConfirmExit: cb => { request = cb; }, respondToExit: value => { response = value; } } },

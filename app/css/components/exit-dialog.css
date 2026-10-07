@@ -1,5 +1,4 @@
-#exit-dialog,
-#prompt-json-dialog {
+#exit-dialog {
   margin: auto;
   width: min(420px, calc(100vw - 32px));
   padding: 24px;
@@ -11,8 +10,7 @@
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
 }
 
-#exit-dialog::backdrop,
-#prompt-json-dialog::backdrop { background: rgba(10, 18, 32, 0.55); }
+#exit-dialog::backdrop { background: rgba(10, 18, 32, 0.55); }
 .exit-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
 .exit-app-name { color: var(--color-muted); font-size: 12px; }
 #exit-title { font-size: 19px; font-weight: 600; }
@@ -23,20 +21,3 @@
 .exit-actions button:hover { background: var(--color-hover); }
 .exit-actions .exit-confirm { border-color: #3864c7; background: #3864c7; color: #fff; }
 .exit-actions .exit-confirm:hover { border-color: #294da4; background: #294da4; }
-
-#prompt-json-dialog { width: min(640px, calc(100vw - 32px)); }
-#prompt-json-dialog form { max-height: calc(100vh - 100px); overflow-y: auto; }
-#prompt-json-title { font-size: 19px; margin-bottom: 12px; }
-#prompt-json-description { color: var(--color-muted); }
-#prompt-json-dialog label { display: block; margin: 16px 0 6px; }
-#prompt-json-specifications {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid var(--color-border);
-  background: var(--color-control);
-  font: inherit;
-  resize: vertical;
-}
-#prompt-json-specifications:focus-visible { outline: 2px solid var(--color-primary); }
-#prompt-json-error { margin-top: 12px; }
-#prompt-json-dialog button:disabled { opacity: 0.5; cursor: wait; }

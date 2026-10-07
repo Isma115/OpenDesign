@@ -128,22 +128,9 @@ function createWindow() {
           click: sendAction('download-json')
         },
         {
-          id: 'prompt-json',
-          label: 'Prompt JSON',
-          visible: false,
-          click: sendAction('prompt-json')
-        },
-        {
           id: 'import-clipboard-json',
           label: 'Importar JSON del portapapeles',
-          visible: false,
           click: sendAction('import-clipboard-json')
-        },
-        {
-          id: 'image-json',
-          label: 'Imagen a JSON',
-          visible: false,
-          click: sendAction('image-json')
         },
         ...(process.platform !== 'darwin' ? [
           { type: 'separator' },
@@ -177,20 +164,6 @@ function createWindow() {
     {
       label: 'Ver',
       submenu: [
-        {
-          label: 'Funciones extra',
-          type: 'checkbox',
-          checked: false,
-          click: item => {
-            const view = template.find(entry => entry.label === 'Ver');
-            view.submenu.find(entry => entry.label === 'Funciones extra').checked = item.checked;
-            const file = template.find(entry => entry.label === 'Archivo');
-            file.submenu.filter(entry => ['prompt-json', 'import-clipboard-json', 'image-json'].includes(entry.id))
-              .forEach(entry => { entry.visible = item.checked; });
-            Menu.setApplicationMenu(Menu.buildFromTemplate(template));
-          }
-        },
-        { type: 'separator' },
         { label: 'Cuadrícula', click: sendAction('toggle-grid') },
         { label: 'Ajustar a cuadrícula', click: sendAction('toggle-snap') },
         { label: 'Guías', click: sendAction('toggle-guides') },
@@ -234,23 +207,9 @@ ipcMain.handle('layer-context-menu', event => {
   });
 });
 
-ipcMain.on('edit-prompt-text', (event, action) => {
-  if (!mainWindow || event.sender !== mainWindow.webContents) return;
-  const commands = { copy: 'copy', paste: 'paste', cut: 'cut', 'select-all': 'selectAll', undo: 'undo', redo: 'redo' };
-  if (Object.hasOwn(commands, action)) mainWindow.webContents[commands[action]]();
-});
-
 ipcMain.handle('clipboard-read-text', event => {
   if (!mainWindow || event.sender !== mainWindow.webContents) return { success: false };
   return { success: true, text: clipboard.readText() };
-});
-
-ipcMain.handle('clipboard-write-text', (event, text) => {
-  if (!mainWindow || event.sender !== mainWindow.webContents || typeof text !== 'string') {
-    return { success: false };
-  }
-  clipboard.writeText(text);
-  return { success: true };
 });
 
 // Handlers para diálogos de archivo

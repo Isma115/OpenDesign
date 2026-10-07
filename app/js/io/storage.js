@@ -2,7 +2,6 @@
 import { getState, loadDocument, setDirty, updateDocument } from '../core/state.js';
 import { renderDocument } from '../editor/renderer.js';
 import { refreshSelection } from '../editor/selection.js';
-import { buildJSONPrompt, buildImageJSONPrompt } from './json-prompt.js';
 
 const STORAGE_KEY = 'trazuvia_autosave';
 
@@ -93,24 +92,6 @@ export async function downloadJSON() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   return true;
-}
-
-export async function copyJSONPrompt(specifications, fromImage = false) {
-  try {
-    const prompt = fromImage ? buildImageJSONPrompt(specifications) : buildJSONPrompt(getState().document, specifications);
-    if (window.electronAPI) {
-      const result = await window.electronAPI.writeClipboardText(prompt);
-      if (!result.success) throw new Error('No se pudo acceder al portapapeles');
-    } else {
-      await navigator.clipboard.writeText(prompt);
-    }
-    const status = document.getElementById('status-info');
-    if (status) status.textContent = fromImage ? 'Prompt copiado: pégalo en tu IA junto con la imagen' : 'Prompt JSON copiado al portapapeles';
-    return true;
-  } catch (error) {
-    console.error('No se pudo copiar el Prompt JSON:', error);
-    return false;
-  }
 }
 
 export async function importClipboardJSON() {

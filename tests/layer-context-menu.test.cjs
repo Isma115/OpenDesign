@@ -6,7 +6,7 @@ const { EventEmitter } = require('node:events');
 (async () => {
   const stateAPI = await import('../app/js/core/state.js');
   const { getCssClassForElement } = await import('../app/js/core/css-template.js');
-  const strip = path => fs.readFileSync(path, 'utf8').replace(/^import .*;\n/gm, '').replace(/^export /gm, '');
+  const strip = path => fs.readFileSync(path, 'utf8').replace(/\r\n/g, '\n').replace(/^import .*;\n/gm, '').replace(/^export /gm, '');
   const row = { dataset: { layerId: 'group' }, draggable: true, querySelector: () => ({ textContent: 'Button', replaceWith: input => { row.input = input; } }) };
   const document = {
     querySelectorAll: () => [row],
